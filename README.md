@@ -3,12 +3,26 @@
 Mahalle marketi için tek sayfalık **ürün kataloğu**. Ürünler ve etiket fiyatları
 gösterilir; sepet, sipariş ya da ödeme yoktur. Sadece frontend.
 
+**Canlı:** <https://meydan-sarkuteri.vercel.app>
+
 ## Çalıştırma
 
 `index.html` dosyasını doğrudan tarayıcıda açabilirsin. Yerel sunucuyla denemek için:
 
 ```
 npx serve .
+```
+
+Bağımlılık, paket yöneticisi ve build adımı yok — depoyu klonlayıp açman yeterli.
+
+## Yayın
+
+Vercel'de, `main` dalına bağlı. Dosyalar olduğu gibi CDN'den servis edilir;
+derlenecek bir şey ve çalışan sunucu kodu yok. `main`'e her push production'a
+otomatik çıkar. Elle deploy gerekirse:
+
+```
+vercel --prod
 ```
 
 ## Dosyalar
@@ -57,7 +71,8 @@ ve `js/products.js` içinde statik olarak durur:
 
 Her ürünün `kaynak` alanı hangi katalogdan geldiğini tutar. Aynı ada sahip ürünler
 tekilleştirildi (24 Migros kaydı bu yüzden alınmadı). Görseller ilgili markanın
-CDN'inden çekilir, projeye kopyalanmaz.
+CDN'inden çekilir, projeye kopyalanmaz — yani o CDN'ler bağlantıyı değiştirirse
+görsel düşer. Bu durumda kart boş kalmaz, yerine etiket simgesi konur.
 
 İndirimli fiyatlar yalnızca A101 tarafında var. Migros'ta ürünlerin yanında görünen
 "Money ile" fiyatı bir sadakat kartı fiyatı, herkese açık bir indirim değil — bu yüzden
