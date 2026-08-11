@@ -2,7 +2,14 @@
    Kaynaklar: a101.com.tr/kapida ve migros.com.tr (Sanal Market),
    2026-08-11 tarihinde alındı.
    Fiyatlar TL cinsindendir ve tanıtım amaçlı statik veridir.
-   Bu dosya otomatik üretilmiştir; elle düzenlemek yerine veriyi yeniden çekin. */
+   Bu dosya otomatik üretilmiştir; elle düzenlemek yerine veriyi yeniden çekin.
+
+   Not: 2026-08-11'de iki kayıt elle silindi (u139, u258). Bunlar ürün değil,
+   A101 kampanya afişleriydi; kazıyıcı bunları ürün sanmış. Bkz.
+   scripts/veri-kontrol.js — aynı hatayı bir daha yakalamak için yazıldı. */
+
+// Fiyatların çekildiği tarih. Sayfadaki tarih rozeti bunu okur; elle yazılmasın.
+const VERI_TARIHI = '2026-08-11';
 
 const REYONLAR = [
   {
@@ -33,7 +40,7 @@ const REYONLAR = [
     "id": "temel-gida",
     "ad": "Temel Gıda",
     "ikon": "🫒",
-    "adet": 39
+    "adet": 38
   },
   {
     "id": "atistirmalik",
@@ -45,7 +52,7 @@ const REYONLAR = [
     "id": "icecek",
     "ad": "Su & İçecek",
     "ikon": "🥤",
-    "adet": 42
+    "adet": 41
   },
   {
     "id": "donuk",
@@ -403,7 +410,7 @@ const URUNLER = [
   },
   {
     "id": "u036",
-    "ad": "Uzman Kasap Antrikot Burger  320 G",
+    "ad": "Uzman Kasap Antrikot Burger 320 G",
     "reyon": "sarkuteri",
     "gorsel": "https://images.migrosone.com/sanalmarket/product/25030435/25030435-cf9716.jpg",
     "fiyat": 429.95,
@@ -952,7 +959,7 @@ const URUNLER = [
   },
   {
     "id": "u097",
-    "ad": "Köy Biberi  Kg",
+    "ad": "Köy Biberi Kg",
     "reyon": "meyve-sebze",
     "gorsel": "https://images.migrosone.com/sanalmarket/product/28054104/28054104_1-462c19.jpg",
     "fiyat": 99.95,
@@ -1327,15 +1334,6 @@ const URUNLER = [
     "fiyat": 149.95,
     "eskiFiyat": null,
     "kaynak": "migros"
-  },
-  {
-    "id": "u139",
-    "ad": "10-tl-urunleri",
-    "reyon": "temel-gida",
-    "gorsel": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/10-tl-urunleri_200x200.png",
-    "fiyat": 300,
-    "eskiFiyat": null,
-    "kaynak": "a101"
   },
   {
     "id": "u140",
@@ -1969,7 +1967,7 @@ const URUNLER = [
   },
   {
     "id": "u210",
-    "ad": "Ruffles Originals Patates Cipsi  Mega Boy 193 G",
+    "ad": "Ruffles Originals Patates Cipsi Mega Boy 193 G",
     "reyon": "atistirmalik",
     "gorsel": "https://images.migrosone.com/sanalmarket/product/05087053/05087053-2afd18.jpg",
     "fiyat": 93.95,
@@ -1978,7 +1976,7 @@ const URUNLER = [
   },
   {
     "id": "u211",
-    "ad": "Ruffles Originals Patates Cipsi  Parti Boy 160 G",
+    "ad": "Ruffles Originals Patates Cipsi Parti Boy 160 G",
     "reyon": "atistirmalik",
     "gorsel": "https://images.migrosone.com/sanalmarket/product/05080154/05080154_1-11f013.jpg",
     "fiyat": 84.95,
@@ -2400,15 +2398,6 @@ const URUNLER = [
     "kaynak": "migros"
   },
   {
-    "id": "u258",
-    "ad": "HaftanınYıldızları",
-    "reyon": "icecek",
-    "gorsel": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/haftanin-yildizlari_200x200.png",
-    "fiyat": 97.5,
-    "eskiFiyat": 107.5,
-    "kaynak": "a101"
-  },
-  {
     "id": "u259",
     "ad": "Herby Yeşil Çay Çilek & Lime 18'li 27 G",
     "reyon": "icecek",
@@ -2608,7 +2597,7 @@ const URUNLER = [
   },
   {
     "id": "u281",
-    "ad": "Çengelköy Börekçisi Köy Böreğı Cevizli Dutlu Peynirli  500 G",
+    "ad": "Çengelköy Börekçisi Köy Böreğı Cevizli Dutlu Peynirli 500 G",
     "reyon": "donuk",
     "gorsel": "https://images.migrosone.com/sanalmarket/product/17555485/17555485_1-57a310.jpg",
     "fiyat": 299.95,
