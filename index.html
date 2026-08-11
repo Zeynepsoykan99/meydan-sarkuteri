@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meydan Şarküteri — Mahallenin tezgâhı</title>
+<meta name="description" content="Meydan Şarküteri ürün kataloğu: 472 ürün, güncel etiket fiyatlarıyla. Reyonları gez, fiyatlara bak.">
+<meta name="theme-color" content="#D6202A">
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="tr_TR">
+<meta property="og:site_name" content="Meydan Şarküteri">
+<meta property="og:title" content="Meydan Şarküteri — Mahallenin tezgâhı">
+<meta property="og:description" content="472 ürün, 13 reyon, güncel etiket fiyatları. Reyonları gez, fiyatlara mağazaya gelmeden bak.">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D6202A'/%3E%3Cpath d='M6 22V10h4l6 8 6-8h4v12' fill='none' stroke='%23FFCE00' stroke-width='3.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+
+<!-- Katalogu app.js basıyor; JS yoksa boş kalacak kontrolleri hiç göstermeyelim -->
+<noscript><style>
+  .reyon-serit, .siralama, #katalog-ozet, #firsat, #gunun, #firsat-baglanti,
+  .ayak-sutun:has(#ayak-reyon) { display: none; }
+</style></noscript>
+</head>
+<body>
+
+<a class="atla" href="#katalog">İçeriğe atla</a>
+
+<!-- Tente: mahalle bakkalının kırmızı-beyaz şeridi -->
+<div class="tente" aria-hidden="true"></div>
+
+<header class="baslik">
+  <div class="baslik-ust kucak">
+    <a class="logo" href="#" aria-label="Meydan Şarküteri ana sayfa">
+      <span class="logo-mark" aria-hidden="true">M</span>
+      <span class="logo-yazi">
+        <strong>Meydan</strong>
+        <em>Şarküteri</em>
+      </span>
+    </a>
+
+    <form class="arama" role="search" onsubmit="return false">
+      <svg class="arama-ikon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 18 18"/></svg>
+      <input id="arama" type="search" placeholder="Ürün ara — peynir, zeytin, süt…" autocomplete="off" aria-label="Ürün ara">
+      <button type="button" class="arama-sil" id="arama-sil" hidden aria-label="Aramayı temizle">✕</button>
+    </form>
+
+    <p class="acilis">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.4 2"/></svg>
+      <span><strong>Her gün 07.00 – 22.00</strong>Cumhuriyet Meydanı No: 7</span>
+    </p>
+  </div>
+
+  <nav class="reyon-serit" aria-label="Reyonlar">
+    <div class="kucak reyon-kucak" id="reyon-serit"></div>
+  </nav>
+</header>
+
+<main>
+
+  <noscript>
+    <p class="js-yok">
+      <strong>Ürün listesi yüklenemedi.</strong>
+      Bu katalog reyonları ve fiyatları göstermek için JavaScript kullanıyor; tarayıcında kapalı görünüyor.
+      Açtıktan sonra sayfayı yenilersen 472 ürünün tamamını görebilirsin.
+    </p>
+  </noscript>
+
+  <!-- Vitrin -->
+  <section class="vitrin">
+    <div class="kucak vitrin-kucak">
+      <div class="vitrin-soz">
+        <p class="kas">Mahallenin tezgâhı</p>
+        <h1>Bugünün etiketleri,<br><span class="vurgu">tek sayfada.</span></h1>
+        <p class="vitrin-alt">Meydan Şarküteri'nin bütün reyonları ve güncel fiyatları. <strong id="vitrin-adet">472</strong> ürünün etiketine mağazaya gelmeden bakabilirsin.</p>
+        <div class="vitrin-dugmeler">
+          <a class="dugme dugme-dolu" href="#katalog">Reyonlara göz at</a>
+          <a class="dugme dugme-hat" id="firsat-baglanti" href="#firsat">Düşen etiketler</a>
+        </div>
+        <ul class="tezgah-notu">
+          <li><span aria-hidden="true">📍</span> Cumhuriyet Meydanı, tramvay durağının yanında</li>
+          <li><span aria-hidden="true">🧊</span> Şarküteri reyonu her sabah yenilenir</li>
+          <li><span aria-hidden="true">🏷️</span> Etiketler tezgâhtaki fiyatla aynı</li>
+        </ul>
+      </div>
+
+      <!-- Günün etiketi: en yüksek indirimli üründen üretilir -->
+      <aside class="gunun" id="gunun" aria-label="Günün etiketi"></aside>
+    </div>
+  </section>
+
+  <!-- Düşen etiketler -->
+  <section class="firsat" id="firsat">
+    <div class="kucak">
+      <div class="bolum-baslik">
+        <h2>Düşen etiketler</h2>
+        <p>Bu hafta fiyatı geri çekilen ürünler.</p>
+      </div>
+      <!-- tabindex: yatay kaydırılan bölge klavyeyle de gezilebilsin -->
+      <div class="ray" id="firsat-ray" role="list" tabindex="0" aria-label="Düşen etiketler, yatay liste"></div>
+    </div>
+  </section>
+
+  <!-- Katalog -->
+  <section class="katalog" id="katalog">
+    <div class="kucak">
+      <div class="katalog-ust">
+        <div class="bolum-baslik">
+          <h2 id="katalog-baslik">Bütün reyonlar</h2>
+          <p id="katalog-ozet" aria-live="polite" aria-atomic="true">472 ürün listeleniyor.</p>
+        </div>
+        <label class="siralama">
+          <span>Sırala</span>
+          <select id="siralama">
+            <option value="onerilen">Reyon sırası</option>
+            <option value="ucuz">Artan fiyat</option>
+            <option value="pahali">Azalan fiyat</option>
+            <option value="indirim">En çok indirim</option>
+            <option value="isim">İsme göre (A–Z)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="izgara" id="izgara"></div>
+
+      <div class="bos" id="bos" hidden>
+        <p class="bos-baslik">Tezgâhta bulamadık.</p>
+        <p class="bos-alt" id="bos-alt">Başka bir kelime dene ya da bütün reyonlara dön.</p>
+        <button class="dugme dugme-dolu" id="bos-sifirla" type="button">Filtreleri sıfırla</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="ayak">
+  <div class="kucak ayak-kucak">
+    <div class="ayak-marka">
+      <span class="logo-mark" aria-hidden="true">M</span>
+      <p><strong>Meydan Şarküteri</strong><br>Cumhuriyet Meydanı No: 7 · Her gün 07.00 – 22.00</p>
+    </div>
+    <div class="ayak-sutun">
+      <h3>Reyonlar</h3>
+      <ul id="ayak-reyon"></ul>
+    </div>
+    <div class="ayak-sutun">
+      <h3>Tezgâh notu</h3>
+      <ul>
+        <li>Fiyatlar TL'dir, KDV dahildir.</li>
+        <li>Ürün görselleri ve fiyatları A101 Kapıda ile Migros Sanal Market kataloglarından alınmıştır.</li>
+        <li>Bu sayfa bir fiyat kataloğudur; online sipariş alınmaz.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ayak-serit"><div class="kucak">© 2026 Meydan Şarküteri · Arayüz demosu</div></div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

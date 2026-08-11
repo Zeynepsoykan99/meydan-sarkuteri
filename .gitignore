@@ -1,0 +1,7 @@
+# Tarayıcı otomasyonu / test kalıntıları
+.playwright-mcp/
+
+# İşletim sistemi
+Thumbs.db
+desktop.ini
+.DS_Store
