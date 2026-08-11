@@ -166,7 +166,17 @@ button { cursor: pointer; }
 .acilis strong { display: block; color: var(--murekkep); font-weight: 700; font-size: 14px; }
 
 /* Reyon şeridi */
-.reyon-serit { border-top: 1px solid var(--cizgi); background: var(--beyaz); }
+.reyon-serit { position: relative; border-top: 1px solid var(--cizgi); background: var(--beyaz); }
+
+/* Sağda daha fazla reyon olduğunu gösteren soluklaşma. Kaydırma çubuğu gizli
+   olduğu için tek ipucu buydu; sınıfı app.js gerçek taşmaya göre koyar. */
+.reyon-serit::after {
+  content: ""; position: absolute; inset-block: 0; right: 0;
+  width: 56px; pointer-events: none;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), var(--beyaz) 72%);
+  opacity: 0; transition: opacity .2s;
+}
+.reyon-serit.daha-var::after { opacity: 1; }
 .reyon-kucak {
   display: flex; gap: 8px;
   overflow-x: auto; scrollbar-width: none;
@@ -339,6 +349,41 @@ button { cursor: pointer; }
 }
 .siralama select:hover { border-color: var(--murekkep); }
 
+/* Filtre araçları: indirim düğmesi, fiyat aralığı, sıralama */
+.katalog-araclar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+
+.suzgec-dugme {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 16px;
+  background: var(--beyaz);
+  border: 1.5px solid var(--cizgi); border-radius: 999px;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.suzgec-dugme:hover { border-color: var(--murekkep); }
+.suzgec-dugme[aria-pressed="true"] {
+  background: var(--kirmizi); border-color: var(--kirmizi); color: var(--beyaz);
+}
+
+.fiyat-araligi {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--cizgi); border-radius: 999px;
+}
+.fiyat-araligi input {
+  width: 78px; padding: 6px 2px;
+  background: none; border: 0;
+  font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fiyat-araligi input:focus { outline: none; }
+.fiyat-araligi:focus-within { border-color: var(--murekkep); }
+.araligi-tire { color: var(--murekkep-soluk); }
+/* Sayı kutularının artırma okları sığmıyor, kapatıyoruz */
+.fiyat-araligi input::-webkit-outer-spin-button,
+.fiyat-araligi input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fiyat-araligi input { -moz-appearance: textfield; appearance: textfield; }
+
 .izgara {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(226px, 1fr));
@@ -401,6 +446,93 @@ button { cursor: pointer; }
   margin-top: auto; padding-top: 14px;   /* fiyat her kartta aynı hizada dipte dursun */
 }
 
+/* Birim fiyat: asıl karşılaştırma ölçüsü ama etiketin önüne geçmemeli */
+.birim-fiyat {
+  margin-top: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--murekkep-soluk);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kartı baştan sona kaplayan görünmez düğme — kart tıklanabilir olsun,
+   başlık yapısı bozulmadan tek bir odak durağı kalsın. */
+.kart-ac {
+  position: absolute; inset: 0;
+  background: none; border: 0; border-radius: inherit;
+  cursor: pointer;
+}
+.kart-ac:focus-visible { outline: 3px solid var(--kirmizi); outline-offset: 3px; }
+
+/* ---------- Ürün ayrıntısı ---------- */
+.detay {
+  width: min(100% - 32px, 820px);
+  padding: 0;
+  border: 3px solid var(--murekkep);
+  border-radius: var(--r-buyuk);
+  background: var(--beyaz);
+  color: var(--murekkep);
+  overflow: visible;
+}
+.detay::backdrop { background: rgba(27, 25, 23, .58); }
+
+.detay #detay-ic {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 30px;
+  padding: 30px;
+}
+
+.detay-gorsel-alan {
+  position: relative;
+  background: var(--tezgah);
+  border-radius: var(--r);
+  overflow: hidden;
+  align-self: start;
+}
+.detay-gorsel { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+.detay-gorsel-alan.gorsel-yok::after {
+  content: "🏷️"; position: absolute; inset: 0;
+  display: grid; place-items: center; font-size: 42px; opacity: .3;
+}
+
+.detay-ad { font-size: clamp(22px, 3vw, 30px); margin-top: 6px; }
+.detay-fiyatlar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.detay-birim { margin-top: 12px; color: var(--murekkep-soluk); font-size: 15px; }
+.detay-birim strong { color: var(--murekkep); font-variant-numeric: tabular-nums; }
+
+.detay-liste {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 18px;
+  margin: 22px 0 0; padding-top: 18px;
+  border-top: 1.5px dashed var(--cizgi);
+  font-size: 14.5px;
+}
+.detay-liste dt { color: var(--murekkep-soluk); }
+.detay-liste dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.detay-not { margin-top: 18px; font-size: 13px; color: var(--murekkep-soluk); }
+
+.detay-kapat {
+  position: absolute; top: -14px; right: -14px; z-index: 2;
+  width: 40px; height: 40px;
+  background: var(--murekkep); color: var(--beyaz);
+  border: 3px solid var(--beyaz); border-radius: 50%;
+  font-size: 15px; line-height: 1;
+}
+.detay-kapat:hover { background: var(--kirmizi); }
+
+/* ---------- Başa dön ---------- */
+.basa-don {
+  position: fixed; right: 22px; bottom: 22px; z-index: 50;
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  background: var(--murekkep); color: var(--sari);
+  border: 0; border-radius: 50%;
+  font-size: 21px; line-height: 1;
+  box-shadow: var(--golge);
+  transition: background .16s, transform .12s;
+}
+.basa-don:hover { background: var(--kirmizi); color: var(--beyaz); }
+.basa-don:active { transform: translateY(1px); }
+
 /* ---------- Boş durum ---------- */
 .bos { padding: 76px 20px; text-align: center; border: 2px dashed var(--cizgi); border-radius: var(--r-buyuk); }
 .bos-baslik { font-family: var(--display); font-weight: 800; font-size: 26px; }
@@ -451,6 +583,13 @@ button { cursor: pointer; }
   .ray { grid-auto-columns: 172px; }
   .katalog, .firsat { padding: 44px 0; }
   .ayak-kucak { grid-template-columns: 1fr; }
+
+  .katalog-araclar { width: 100%; }
+  .siralama { margin-left: auto; }
+  .fiyat-araligi input { width: 62px; }
+  .detay #detay-ic { grid-template-columns: 1fr; gap: 20px; padding: 22px; }
+  .detay-gorsel-alan { max-width: 220px; margin-inline: auto; }
+  .basa-don { right: 14px; bottom: 14px; width: 44px; height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -4,15 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meydan Şarküteri — Mahallenin tezgâhı</title>
-<meta name="description" content="Meydan Şarküteri ürün kataloğu: 472 ürün, güncel etiket fiyatlarıyla. Reyonları gez, fiyatlara bak.">
+<meta name="description" content="Meydan Şarküteri ürün kataloğu: 470 ürün, güncel etiket fiyatlarıyla. Reyonları gez, fiyatlara bak.">
 <meta name="theme-color" content="#D6202A">
 
 <meta property="og:type" content="website">
 <meta property="og:locale" content="tr_TR">
 <meta property="og:site_name" content="Meydan Şarküteri">
 <meta property="og:title" content="Meydan Şarküteri — Mahallenin tezgâhı">
-<meta property="og:description" content="472 ürün, 13 reyon, güncel etiket fiyatları. Reyonları gez, fiyatlara mağazaya gelmeden bak.">
-<meta name="twitter:card" content="summary">
+<meta property="og:description" content="470 ürün, 13 reyon, güncel etiket fiyatları. Reyonları gez, fiyatlara mağazaya gelmeden bak.">
+<meta property="og:url" content="https://meydan-sarkuteri.vercel.app/">
+<!-- og:image mutlak URL olmak zorunda; göreli yol paylaşımda çalışmaz -->
+<meta property="og:image" content="https://meydan-sarkuteri.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Meydan Şarküteri vitrini: Bugünün etiketleri, tek sayfada.">
+<meta name="twitter:card" content="summary_large_image">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,7 +73,7 @@
     <p class="js-yok">
       <strong>Ürün listesi yüklenemedi.</strong>
       Bu katalog reyonları ve fiyatları göstermek için JavaScript kullanıyor; tarayıcında kapalı görünüyor.
-      Açtıktan sonra sayfayı yenilersen 472 ürünün tamamını görebilirsin.
+      Açtıktan sonra sayfayı yenilersen 470 ürünün tamamını görebilirsin.
     </p>
   </noscript>
 
@@ -77,7 +83,7 @@
       <div class="vitrin-soz">
         <p class="kas">Mahallenin tezgâhı</p>
         <h1>Bugünün etiketleri,<br><span class="vurgu">tek sayfada.</span></h1>
-        <p class="vitrin-alt">Meydan Şarküteri'nin bütün reyonları ve güncel fiyatları. <strong id="vitrin-adet">472</strong> ürünün etiketine mağazaya gelmeden bakabilirsin.</p>
+        <p class="vitrin-alt">Meydan Şarküteri'nin bütün reyonları ve güncel fiyatları. <strong id="vitrin-adet">470</strong> ürünün etiketine mağazaya gelmeden bakabilirsin.</p>
         <div class="vitrin-dugmeler">
           <a class="dugme dugme-dolu" href="#katalog">Reyonlara göz at</a>
           <a class="dugme dugme-hat" id="firsat-baglanti" href="#firsat">Düşen etiketler</a>
@@ -85,7 +91,8 @@
         <ul class="tezgah-notu">
           <li><span aria-hidden="true">📍</span> Cumhuriyet Meydanı, tramvay durağının yanında</li>
           <li><span aria-hidden="true">🧊</span> Şarküteri reyonu her sabah yenilenir</li>
-          <li><span aria-hidden="true">🏷️</span> Etiketler tezgâhtaki fiyatla aynı</li>
+          <!-- Metni app.js, products.js'teki VERI_TARIHI'nden yazar -->
+          <li><span aria-hidden="true">🗓️</span> <span id="veri-tarihi"></span></li>
         </ul>
       </div>
 
@@ -112,18 +119,34 @@
       <div class="katalog-ust">
         <div class="bolum-baslik">
           <h2 id="katalog-baslik">Bütün reyonlar</h2>
-          <p id="katalog-ozet" aria-live="polite" aria-atomic="true">472 ürün listeleniyor.</p>
+          <p id="katalog-ozet" aria-live="polite" aria-atomic="true">470 ürün listeleniyor.</p>
         </div>
-        <label class="siralama">
-          <span>Sırala</span>
-          <select id="siralama">
-            <option value="onerilen">Reyon sırası</option>
-            <option value="ucuz">Artan fiyat</option>
-            <option value="pahali">Azalan fiyat</option>
-            <option value="indirim">En çok indirim</option>
-            <option value="isim">İsme göre (A–Z)</option>
-          </select>
-        </label>
+
+        <div class="katalog-araclar">
+          <button class="suzgec-dugme" id="indirim-suzgec" type="button" aria-pressed="false">
+            <span aria-hidden="true">🏷️</span> Sadece indirimliler
+          </button>
+
+          <div class="fiyat-araligi" role="group" aria-label="Fiyat aralığı">
+            <input id="fiyat-min" type="number" min="0" step="1" inputmode="numeric"
+                   placeholder="En az ₺" aria-label="En düşük fiyat">
+            <span class="araligi-tire" aria-hidden="true">–</span>
+            <input id="fiyat-max" type="number" min="0" step="1" inputmode="numeric"
+                   placeholder="En çok ₺" aria-label="En yüksek fiyat">
+          </div>
+
+          <label class="siralama">
+            <span>Sırala</span>
+            <select id="siralama">
+              <option value="onerilen">Reyon sırası</option>
+              <option value="ucuz">Artan fiyat</option>
+              <option value="pahali">Azalan fiyat</option>
+              <option value="birim">Birim fiyat (artan)</option>
+              <option value="indirim">En çok indirim</option>
+              <option value="isim">İsme göre (A–Z)</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div class="izgara" id="izgara"></div>
@@ -159,7 +182,21 @@
   <div class="ayak-serit"><div class="kucak">© 2026 Meydan Şarküteri · Arayüz demosu</div></div>
 </footer>
 
+<!-- Ürün ayrıntısı. Native <dialog>: odak tuzağı ve Esc bedava gelir. -->
+<dialog class="detay" id="urun-detay" aria-labelledby="detay-ad">
+  <button class="detay-kapat" id="detay-kapat" type="button" aria-label="Kapat">✕</button>
+  <div id="detay-ic"></div>
+</dialog>
+
+<button class="basa-don" id="basa-don" type="button" hidden aria-label="Sayfanın başına dön">
+  <span aria-hidden="true">↑</span>
+</button>
+
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
+
+<!-- Vercel Web Analytics. Paket gerektirmeyen kurulum; panelden Web Analytics
+     açılana kadar 404 döner, defer olduğu için sayfayı etkilemez. -->
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
