@@ -25,6 +25,13 @@ otomatik çıkar. Elle deploy gerekirse:
 vercel --prod
 ```
 
+Sayfada iki analitik script'i var: `insights` (sayfa görüntüleme, hangi reyon
+geziliyor) ve `speed-insights` (gerçek kullanıcıda LCP/CLS/INP). İkisi Vercel'de
+ayrı ürün ve **ayrı ayrı panelden açılır** — açılmayanın script'i 404 döner,
+`defer` olduğu için sayfayı etkilemez. Paketsiz kurulum kullanıldı; `package.json`
+eklenmedi, çünkü Vercel bunu görünce projeyi Node projesi sanıp build çalıştırmaya
+kalkar.
+
 ## Dosyalar
 
 ```

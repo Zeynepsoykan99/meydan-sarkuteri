@@ -195,8 +195,12 @@
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
 
-<!-- Vercel Web Analytics. Paket gerektirmeyen kurulum; panelden Web Analytics
-     açılana kadar 404 döner, defer olduğu için sayfayı etkilemez. -->
+<!-- Vercel analitiği, paket gerektirmeyen kurulum. İkisi ayrı ürün, ayrı ayrı
+     panelden açılır; açılmayanın script'i 404 döner ama defer olduğu için
+     sayfayı etkilemez.
+       insights        → sayfa görüntüleme, yönlendiren, hangi reyon geziliyor
+       speed-insights  → gerçek kullanıcıda LCP / CLS / INP -->
 <script defer src="/_vercel/insights/script.js"></script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
