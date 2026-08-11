@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://meydan-sarkuteri.vercel.app/sitemap.xml
