@@ -7,4 +7,9 @@ desktop.ini
 .DS_Store
 
 .vercel
+
+# Gerçek değerler depoya girmez, ama örnek dosya girmeli
 .env*
+!.env.example
+
+node_modules/

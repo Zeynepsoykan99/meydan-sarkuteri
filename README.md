@@ -10,8 +10,13 @@ gösterilir; sepet, sipariş ya da ödeme yoktur. Sadece frontend.
 **Bir yerel sunucu gerekiyor:**
 
 ```
+npm install
 npx serve .
 ```
+
+Veritabanı olmadan da çalışır: `/api/katalog` cevap vermezse sayfa
+`data/products.json` yedeğine düşer ve fiyatların güncel olmayabileceğini
+söyleyen bir not gösterir.
 
 `index.html`'i çift tıklayıp `file://` ile açmak **çalışmaz**. Ürün verisi artık
 `data/products.json` dosyasından `fetch` ile okunuyor; tarayıcılar `file://`
@@ -39,15 +44,70 @@ ayrı ürün ve **ayrı ayrı panelden açılır** — açılmayanın script'i 4
 eklenmedi, çünkü Vercel bunu görünce projeyi Node projesi sanıp build çalıştırmaya
 kalkar.
 
+## Veritabanı
+
+Katalog iki yerde durur: **veritabanı** kaynaktır, `data/products.json`
+ise son bilinen iyi kopyadır (yedek). Sayfa önce `/api/katalog`'u dener,
+olmazsa yedeğe düşer.
+
+### Kurulum
+
+1. [Neon](https://neon.tech) üzerinde bir Postgres oluştur.
+2. Bağlantı dizesini `.env.local` içine yaz — değişken adı için
+   `.env.example`'a bak. Havuzlanmış (pooled) uç noktayı kullan.
+3. Şemayı kur ve veriyi bas:
+
+```
+npm install
+npm run migrate           # db/schema.sql — iki kez çalıştırmak güvenli
+npm run seed              # data/products.json -> veritabanı
+npm run seed -- --temiz   # önce boşalt, sonra bas
+```
+
+`seed`, `--temiz` olmadan yalnızca ekler; tablo doluysa hata verip
+hiçbir şey yazmaz. Sessizce üzerine yazmak, elle düzeltilmiş bir kaydı
+fark ettirmeden geri alabilirdi.
+
+### Şema
+
+`db/schema.sql` üç tablo tanımlar: `reyonlar`, `urunler`, `fiyat_gecmisi`.
+
+Ürün id'leri `u001` biçiminde korunuyor — mevcut bağlantılar
+(`?urun=u065`) ve fiyat geçmişi bunlara dayanıyor. Yeni id bir
+sequence'ten gelir, "en büyük + 1" değil: dizide boşluk var (u139 ve
+u258 silinmişti) ve o mantık silinmiş bir numarayı geri kullanıp fiyat
+geçmişini yanlış ürüne bağlayabilirdi.
+
+`urunler.fiyat` değişince bir trigger `fiyat_gecmisi`'ne kayıt atar ve
+`guncellendi` damgasını tazeler.
+
+CHECK kısıtları `scripts/veri-kontrol.js`'teki kontrollerin veritabanı
+karşılığıdır: betik veriyi yazıldıktan sonra denetler, kısıtlar geçersiz
+verinin yazılmasını en baştan engeller.
+
+### API
+
+`GET /api/katalog` — yanıt `data/products.json` ile birebir aynı
+şekildedir, böylece arayüz iki kaynağı ayırt etmek zorunda kalmaz.
+GET dışındaki metodlar 405 döner.
+
+**Yazma ucu yoktur.** Kimlik doğrulama kurulmadan korumasız bir
+POST/PUT/DELETE yayına giderse katalogu herkes değiştirebilir.
+
 ## Dosyalar
 
 ```
 index.html               Sayfa iskeleti
 css/style.css            Tüm stiller (tek dosya, CSS değişkenleriyle)
-data/products.json       Ürün kataloğu — 470 ürün, 13 reyon (otomatik üretildi)
 js/app.js                Veriyi getirir; filtre, arama, sıralama, birim fiyat, detay
-scripts/veri-kontrol.js  Veri doğrulama (aşağıya bak)
+data/products.json       Katalog yedeği — 470 ürün, 13 reyon
+api/katalog.js           GET /api/katalog — veritabanından okur
+db/schema.sql            Tablolar, kısıtlar, fiyat geçmişi trigger'ı
+scripts/migrate.js       Şemayı kurar (idempotent)
+scripts/seed.js          JSON'u veritabanına basar
+scripts/veri-kontrol.js  Veri doğrulama — hem betik hem modül (aşağıya bak)
 og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
+vercel.json              Build kapalı; api/ fonksiyonları çalışır
 ```
 
 ### Veri biçimi
@@ -155,10 +215,21 @@ Site bir katalogdur: ürünleri ve fiyatları gösterir, sipariş almaz.
 ## Veri kontrolü
 
 ```
-node scripts/veri-kontrol.js
+npm run kontrol                        data/products.json'u denetler
+node scripts/veri-kontrol.js --api     canlı /api/katalog yanıtını denetler
+node scripts/veri-kontrol.js --api=URL başka bir adresi denetler
 ```
 
-`data/products.json` her yeniden üretildiğinde çalıştır. Hata varsa 1 ile çıkar.
+Veri her yeniden üretildiğinde çalıştır. Hata varsa 1 ile çıkar.
+
+Betik ayrıca **modül olarak** kullanılabilir; ileride panelden gelen
+kayıtlar da aynı denetimden geçsin, iki yerde iki ayrı doğruluk tanımı
+olmasın diye:
+
+```js
+import { kataloguDenetle } from './scripts/veri-kontrol.js';
+const { hatalar, uyarilar, ozet } = kataloguDenetle(yuk);
+```
 
 Yapısal kontrollerin (reyon dağılımı, tekrarlı id/ad, geçersiz fiyat, eksik
 görsel, `eskiFiyat > fiyat`, `miktar`/`birim`/`stokta` alanlarının tipi ve

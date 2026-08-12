@@ -1,9 +1,14 @@
 /* =====================================================================
    Meydan Şarküteri — katalog arayüzü
 
-   Veri: data/products.json, açılışta fetch ile okunur.
-   Bu yüzden sayfa artık file:// ile açılamaz — fetch yerel dosyada
-   farklı-kaynak sayılıp engelleniyor. Yerelde "npx serve ." gerekir.
+   Veri iki kaynaktan gelebilir, sırayla denenir:
+     1. /api/katalog          canlı veritabanı
+     2. data/products.json    son bilinen iyi kopya (yedek)
+   Yedeğe düşülürse kullanıcıya fiyatların güncel olmayabileceği söylenir.
+   İkisi de başarısızsa hata ekranı devreye girer.
+
+   Veri fetch ile geldiği için sayfa file:// ile açılamaz — tarayıcı yerel
+   dosyada fetch'i farklı-kaynak sayıp engelliyor. "npx serve ." gerekir.
 
    Sipariş yok, sepet yok — sayfa yalnızca ürünleri ve etiket fiyatlarını gösterir.
    ===================================================================== */
@@ -11,7 +16,8 @@
 (function () {
   'use strict';
 
-  const VERI_ADRESI = 'data/products.json';
+  const API_ADRESI = '/api/katalog';
+  const YEDEK_ADRESI = 'data/products.json';
 
   // Veri fetch ile geldiği için bunlar açılışta boş; baslat() dolduruyor.
   let REYONLAR = [];
@@ -627,7 +633,8 @@
       <div class="izgara-durum izgara-hata" role="alert">
         <p class="bos-baslik">Katalog yüklenemedi.</p>
         <p class="bos-alt">
-          Ürün listesi (<code>${kacar(VERI_ADRESI)}</code>) getirilemedi.
+          Ürün listesi ne canlı katalogdan (<code>${kacar(API_ADRESI)}</code>)
+          ne de yedekten (<code>${kacar(YEDEK_ADRESI)}</code>) getirilebildi.
           Bağlantını kontrol edip tekrar deneyebilirsin.
         </p>
         <p class="hata-sebep">${kacar(sebep)}</p>
@@ -652,15 +659,46 @@
       .forEach((e) => { e.disabled = kilit; });
   }
 
-  async function veriGetir() {
-    const yanit = await fetch(VERI_ADRESI, { cache: 'no-cache' });
-    if (!yanit.ok) throw new Error(`Sunucu ${yanit.status} döndü`);
+  async function kaynaktanOku(adres) {
+    const yanit = await fetch(adres, { cache: 'no-cache' });
+    if (!yanit.ok) throw new Error(`${adres} → ${yanit.status}`);
 
     const veri = await yanit.json();
     if (!Array.isArray(veri.urunler) || !Array.isArray(veri.reyonlar)) {
-      throw new Error('Veri beklenen yapıda değil');
+      throw new Error(`${adres} → beklenen yapıda değil`);
     }
     return veri;
+  }
+
+  // Önce canlı katalog, olmazsa dosya yedeği. Yedek eski olabilir ama
+  // hiç ürün göstermemekten iyidir — kullanıcıya da bunu söylüyoruz.
+  async function veriGetir() {
+    try {
+      const veri = await kaynaktanOku(API_ADRESI);
+      return { veri, yedekMi: false };
+    } catch (apiHatasi) {
+      try {
+        const veri = await kaynaktanOku(YEDEK_ADRESI);
+        return { veri, yedekMi: true, apiSebep: apiHatasi.message };
+      } catch (yedekHatasi) {
+        throw new Error(`${apiHatasi.message} · ${yedekHatasi.message}`);
+      }
+    }
+  }
+
+  function yedekNotu(goster) {
+    let not = el('yedek-notu');
+    if (!goster) { if (not) not.remove(); return; }
+    if (not) return;
+
+    not = document.createElement('p');
+    not.id = 'yedek-notu';
+    not.className = 'yedek-notu';
+    not.setAttribute('role', 'status');
+    not.innerHTML =
+      '<strong>Fiyatlar güncel olmayabilir.</strong> ' +
+      'Canlı katalog şu an okunamadı, kayıtlı son kopya gösteriliyor.';
+    dom.katalogBolum.querySelector('.katalog-ust').after(not);
   }
 
   let olaylarBagli = false;
@@ -668,11 +706,14 @@
   async function baslat() {
     yukleniyorGoster();
     try {
-      const veri = await veriGetir();
+      const { veri, yedekMi, apiSebep } = await veriGetir();
 
       REYONLAR = veri.reyonlar;
       URUNLER = veri.urunler;
       GUNCELLENDI = veri.guncellendi || null;
+
+      if (yedekMi) console.warn('Canlı katalog okunamadı, yedeğe düşüldü:', apiSebep);
+      yedekNotu(yedekMi);
 
       endeksleriKur();
 

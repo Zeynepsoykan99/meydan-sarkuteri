@@ -1,0 +1,18 @@
+{
+  "name": "meydan-sarkuteri",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mahalle marketi için tek sayfalık ürün kataloğu",
+  "type": "module",
+  "scripts": {
+    "kontrol": "node scripts/veri-kontrol.js",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

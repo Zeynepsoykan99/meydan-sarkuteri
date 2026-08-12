@@ -471,6 +471,17 @@ button { cursor: pointer; }
   color: var(--kirmizi-koyu);
 }
 
+/* Canlı katalog okunamayıp dosya yedeğine düşüldüğünde */
+.yedek-notu {
+  margin: 0 0 22px;
+  padding: 12px 18px;
+  background: #FFF8E1;
+  border: 1.5px solid var(--sari-koyu);
+  border-radius: var(--r);
+  font-size: 14.5px;
+}
+.yedek-notu strong { font-weight: 800; }
+
 /* Stokta olmayan ürün */
 .yok-rozet {
   display: inline-grid; place-items: center;
