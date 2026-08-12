@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "kontrol": "node scripts/veri-kontrol.js",
-    "migrate": "node scripts/migrate.js",
-    "seed": "node scripts/seed.js"
+    "migrate": "node --env-file-if-exists=.env.local scripts/migrate.js",
+    "seed": "node --env-file-if-exists=.env.local scripts/seed.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0"

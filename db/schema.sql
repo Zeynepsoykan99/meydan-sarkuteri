@@ -12,8 +12,9 @@
 -- Dosya idempotenttir: iki kez çalıştırılabilir.
 --
 -- Not: Bu dosya scripts/migrate.js tarafından "-- @@" satırlarından
--- bölünüp ifade ifade çalıştırılır. Ayırıcıyı kaldırmayın; Neon'un HTTP
--- sürücüsü tek çağrıda çok ifadeli SQL kabul etmiyor.
+-- bölünüp ifade ifade, tek bir işlem (transaction) içinde çalıştırılır.
+-- Ayırıcı, patlayan ifadeyi tek tek raporlayabilmek için; noktalı
+-- virgülden bölmek yanlış olurdu, $$ ... $$ gövdelerinin içinde de var.
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS reyonlar (
