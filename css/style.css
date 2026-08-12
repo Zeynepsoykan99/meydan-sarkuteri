@@ -446,6 +446,44 @@ button { cursor: pointer; }
   margin-top: auto; padding-top: 14px;   /* fiyat her kartta aynı hizada dipte dursun */
 }
 
+/* Izgara durumları: veri ağdan geldiği için yükleniyor / hata halleri var.
+   grid-column: 1/-1 — ızgara sütunlarına bölünmeyip tam genişlik kaplasınlar. */
+.izgara-durum {
+  grid-column: 1 / -1;
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--murekkep-soluk);
+}
+.izgara-hata {
+  border: 2px dashed var(--kirmizi);
+  border-radius: var(--r-buyuk);
+  background: var(--kirmizi-sis);
+}
+.izgara-hata .bos-alt { max-width: 46ch; margin: 10px auto 0; }
+.izgara-hata code {
+  font-size: .92em;
+  background: rgba(27, 25, 23, .07);
+  padding: 1px 6px; border-radius: 5px;
+}
+.hata-sebep {
+  margin: 14px 0 20px;
+  font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--kirmizi-koyu);
+}
+
+/* Stokta olmayan ürün */
+.yok-rozet {
+  display: inline-grid; place-items: center;
+  padding: 4px 9px;
+  background: var(--murekkep); color: var(--beyaz);
+  border-radius: var(--r-kucuk);
+  font-size: 12.5px; font-weight: 800;
+}
+.kart-yok .kart-gorsel,
+.gorsel-soluk .detay-gorsel { opacity: .4; filter: grayscale(1); }
+.kart-yok .kart-ad,
+.kart-yok .kart-fiyat { opacity: .6; }
+
 /* Birim fiyat: asıl karşılaştırma ölçüsü ama etiketin önüne geçmemeli */
 .birim-fiyat {
   margin-top: 6px;

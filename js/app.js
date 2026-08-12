@@ -1,11 +1,23 @@
 /* =====================================================================
    Meydan Şarküteri — katalog arayüzü
-   Veri: js/products.js (REYONLAR, URUNLER)
+
+   Veri: data/products.json, açılışta fetch ile okunur.
+   Bu yüzden sayfa artık file:// ile açılamaz — fetch yerel dosyada
+   farklı-kaynak sayılıp engelleniyor. Yerelde "npx serve ." gerekir.
+
    Sipariş yok, sepet yok — sayfa yalnızca ürünleri ve etiket fiyatlarını gösterir.
    ===================================================================== */
 
 (function () {
   'use strict';
+
+  const VERI_ADRESI = 'data/products.json';
+
+  // Veri fetch ile geldiği için bunlar açılışta boş; baslat() dolduruyor.
+  let REYONLAR = [];
+  let URUNLER = [];
+  let GUNCELLENDI = null;
+  let reyonSayaci = new Map();   // reyon id -> ürün sayısı (veriden hesaplanır)
 
   const durum = {
     reyon: 'hepsi',
@@ -36,6 +48,7 @@
     gunun: el('gunun'),
     vitrinAdet: el('vitrin-adet'),
     ayakReyon: el('ayak-reyon'),
+    ayakReyonSutun: el('ayak-reyon').closest('.ayak-sutun'),
     firsatBolum: el('firsat'),
     firsatBaglanti: el('firsat-baglanti'),
     katalogBolum: el('katalog'),
@@ -126,13 +139,23 @@
     return a && Number(a[1]) > 1 ? { birim: 'adet', deger: Number(a[1]) } : null;
   }
 
+  // Önce veriye bak: miktar/birim alanları doldurulmuşsa onlar geçerli.
+  // Yalnızca boşsalar adı ayrıştırmaya düşüyoruz — böylece veri düzeltilerek
+  // ayrıştırıcının yanıldığı ürünler tek tek elle onarılabilir.
+  function olcu(u) {
+    if (typeof u.miktar === 'number' && u.miktar > 0 && u.birim) {
+      return { deger: u.miktar, birim: u.birim };
+    }
+    return olcuCikar(u.ad);
+  }
+
   function birimFiyat(u) {
-    const olcu = olcuCikar(u.ad);
-    if (!olcu) return null;
-    const deger = u.fiyat / olcu.deger;
+    const o = olcu(u);
+    if (!o) return null;
+    const deger = u.fiyat / o.deger;
     // 1 kg / 1 L ambalajda birim fiyat, fiyatın kendisi — tekrar etmenin anlamı yok
     if (Math.abs(deger - u.fiyat) < 0.01) return null;
-    return { deger, birim: olcu.birim };
+    return { deger, birim: o.birim };
   }
 
   function birimFiyatYazi(u) {
@@ -204,17 +227,23 @@
 
   /* ---------------- arama endeksi ---------------- */
 
-  // Birim fiyatı da burada bir kez hesaplıyoruz; sıralama her karşılaştırmada
-  // adı yeniden ayrıştırmasın.
-  URUNLER.forEach((u) => {
-    u._ara = sadelestir(u.ad + ' ' + reyonAdi(u.reyon));
-    const bf = birimFiyat(u);
-    u._bf = bf ? bf.deger : null;
-    u._bfYazi = bf ? birimFiyatYazi(u) : '';
-    // Sıralama grubu: ₺/kg ile ₺/L kabaca kıyaslanabilir, ₺/adet değil.
-    // Hepsini tek sayı gibi sıralarsak ucuz görünen adetliler başa geçer.
-    u._bfGrup = !bf ? 2 : (bf.birim === 'adet' ? 1 : 0);
-  });
+  // Veri geldikten sonra bir kez çalışır. Birim fiyatı da burada hesaplıyoruz;
+  // sıralama her karşılaştırmada adı yeniden ayrıştırmasın.
+  function endeksleriKur() {
+    reyonSayaci = new Map();
+
+    URUNLER.forEach((u) => {
+      reyonSayaci.set(u.reyon, (reyonSayaci.get(u.reyon) || 0) + 1);
+
+      u._ara = sadelestir(u.ad + ' ' + reyonAdi(u.reyon));
+      const bf = birimFiyat(u);
+      u._bf = bf ? bf.deger : null;
+      u._bfYazi = bf ? birimFiyatYazi(u) : '';
+      // Sıralama grubu: ₺/kg ile ₺/L kabaca kıyaslanabilir, ₺/adet değil.
+      // Hepsini tek sayı gibi sıralarsak ucuz görünen adetliler başa geçer.
+      u._bfGrup = !bf ? 2 : (bf.birim === 'adet' ? 1 : 0);
+    });
+  }
 
   /* ---------------- filtre & sıralama ---------------- */
 
@@ -238,7 +267,14 @@
       // Önce ağırlık/hacim (kıyaslanabilir), sonra adet, en sonda birimsizler
       birim: (a, b) => a._bfGrup - b._bfGrup || (a._bf - b._bf) || 0,
     };
-    if (siralar[durum.siralama]) liste = liste.slice().sort(siralar[durum.siralama]);
+
+    // Stokta olmayanlar hangi sıralama seçilirse seçilsin en sona.
+    // Sort kararlı olduğu için "onerilen"de dosya sırası korunur.
+    const karsilastir = siralar[durum.siralama];
+    liste = liste.slice().sort((a, b) =>
+      (a.stokta === false) - (b.stokta === false) ||
+      (karsilastir ? karsilastir(a, b) : 0)
+    );
 
     return liste;
   }
@@ -246,11 +282,14 @@
   /* ---------------- çizim ---------------- */
 
   function reyonlariCiz() {
-    const hepsi = { id: 'hepsi', ad: 'Tüm reyonlar', ikon: '🧺', adet: URUNLER.length };
+    // Sayılar veriden hesaplanır; JSON'da elle tutulan bir "adet" alanı yok.
+    const hepsi = { id: 'hepsi', ad: 'Tüm reyonlar', ikon: '🧺' };
+    const sayi = (id) => (id === 'hepsi' ? URUNLER.length : (reyonSayaci.get(id) || 0));
+
     dom.reyonSerit.innerHTML = [hepsi].concat(REYONLAR).map((r) => `
       <button class="reyon" type="button" data-reyon="${r.id}" aria-pressed="${r.id === durum.reyon}">
         <span class="reyon-ikon" aria-hidden="true">${r.ikon}</span>${kacar(r.ad)}
-        <span class="reyon-adet">${r.adet}</span>
+        <span class="reyon-adet">${sayi(r.id)}</span>
       </button>`).join('');
 
     dom.ayakReyon.innerHTML = REYONLAR.map((r) =>
@@ -270,10 +309,14 @@
   // Reyon etiketi yalnızca karışık listede bilgi taşır; tek reyon süzüldüğünde gereksiz tekrar.
   function kartHtml(u, reyonGoster = durum.reyon === 'hepsi') {
     const yuzde = indirimYuzde(u);
+    // Stokta olmayanda indirim rozetini göstermiyoruz: alınamayan üründe
+    // indirim bilgi taşımıyor, iki rozet de aynı köşeye düşüyor.
+    const yok = u.stokta === false;
     return `
-      <article class="kart" data-id="${u.id}">
+      <article class="kart${yok ? ' kart-yok' : ''}" data-id="${u.id}">
         <div class="kart-gorsel-alan">
-          ${yuzde ? `<span class="indirim-rozet kart-rozet">%${yuzde} indirim</span>` : ''}
+          ${yok ? '<span class="yok-rozet kart-rozet">Şu an yok</span>'
+                : (yuzde ? `<span class="indirim-rozet kart-rozet">%${yuzde} indirim</span>` : '')}
           <img class="kart-gorsel" src="${kacar(u.gorsel)}" alt="${kacar(u.ad)}" loading="lazy" decoding="async" width="400" height="400">
         </div>
         ${reyonGoster ? `<p class="kart-reyon">${kacar(reyonAdi(u.reyon))}</p>` : ''}
@@ -315,8 +358,8 @@
   // Sayfa "güncel fiyatlar" diyor; veri ise sabit bir anlık görüntü.
   // Tarihi veriden okuyoruz ki elle yazılıp eskimesin.
   const tarihYazi = () => {
-    const t = new Date(VERI_TARIHI);
-    return isNaN(t) ? '' :
+    const t = new Date(GUNCELLENDI);
+    return (!GUNCELLENDI || isNaN(t)) ? '' :
       t.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
@@ -324,7 +367,7 @@
     const yazi = tarihYazi();
     if (!yazi) { dom.veriTarihi.closest('li').hidden = true; return; }
     dom.veriTarihi.innerHTML =
-      `Fiyatlar <time datetime="${VERI_TARIHI}">${yazi}</time> tarihli`;
+      `Fiyatlar <time datetime="${kacar(GUNCELLENDI)}">${yazi}</time> tarihli`;
   }
 
   /* ---------------- ürün ayrıntısı ---------------- */
@@ -333,8 +376,10 @@
     const yuzde = indirimYuzde(u);
     const kaynakAdi = u.kaynak === 'a101' ? 'A101 Kapıda' : 'Migros Sanal Market';
     dom.detayIc.innerHTML = `
-      <div class="detay-gorsel-alan">
-        ${yuzde ? `<span class="indirim-rozet kart-rozet">%${yuzde} indirim</span>` : ''}
+      <div class="detay-gorsel-alan${u.stokta === false ? ' gorsel-soluk' : ''}">
+        ${u.stokta === false
+          ? '<span class="yok-rozet kart-rozet">Şu an yok</span>'
+          : (yuzde ? `<span class="indirim-rozet kart-rozet">%${yuzde} indirim</span>` : '')}
         <img class="detay-gorsel" src="${kacar(u.gorsel)}" alt="${kacar(u.ad)}" width="400" height="400">
       </div>
       <div class="detay-bilgi">
@@ -348,6 +393,7 @@
         <!-- Reyon, fiyat ve eski fiyat yukarıda zaten var; burada yalnızca
              kartta görünmeyen bilgi duruyor. -->
         <dl class="detay-liste">
+          <dt>Durum</dt><dd>${u.stokta === false ? 'Şu an yok' : 'Tezgâhta'}</dd>
           <dt>Kaynak</dt><dd>${kaynakAdi}</dd>
           <dt>Fiyat tarihi</dt><dd>${tarihYazi()}</dd>
         </dl>
@@ -409,7 +455,11 @@
     }
   }
 
-  /* ---------------- olaylar ---------------- */
+  /* ---------------- olaylar ----------------
+     Veri geldikten sonra bağlanıyor: yükleme sırasında tıklanacak bir kart,
+     sayılacak bir reyon yok. Tek sefer bağlanır (bkz. olaylarBagli). */
+
+  function olaylariBagla() {
 
   document.addEventListener('click', (e) => {
     const kartDugme = e.target.closest('[data-urun]');
@@ -556,12 +606,96 @@
     if (alan) alan.classList.add('gorsel-yok');
   }, true);
 
-  /* ---------------- açılış ---------------- */
+  }   /* olaylariBagla sonu */
 
-  urldenOku();
-  veriTarihiCiz();
-  reyonlariCiz();
-  vitrinCiz();
-  katalogCiz();
-  detaySenkron();   // ?urun= ile açılan bağlantı doğrudan pencereyi açsın
+  /* ---------------- açılış ----------------
+     Veri ağdan geldiği için sayfa üç durumdan birinde olabilir:
+     yükleniyor, hata, hazır. Üçünde de kullanıcı ne olduğunu görmeli —
+     boş beyaz ekran bırakmıyoruz. */
+
+  function yukleniyorGoster() {
+    dom.izgara.hidden = false;
+    dom.bos.hidden = true;
+    dom.izgara.innerHTML =
+      '<p class="izgara-durum" role="status">Katalog yükleniyor…</p>';
+  }
+
+  function hataGoster(sebep) {
+    dom.izgara.hidden = false;
+    dom.bos.hidden = true;
+    dom.izgara.innerHTML = `
+      <div class="izgara-durum izgara-hata" role="alert">
+        <p class="bos-baslik">Katalog yüklenemedi.</p>
+        <p class="bos-alt">
+          Ürün listesi (<code>${kacar(VERI_ADRESI)}</code>) getirilemedi.
+          Bağlantını kontrol edip tekrar deneyebilirsin.
+        </p>
+        <p class="hata-sebep">${kacar(sebep)}</p>
+        <button class="dugme dugme-dolu" id="tekrar-dene" type="button">Tekrar dene</button>
+      </div>`;
+
+    // Veri yokken bu bölümlerin gösterecek bir şeyi yok
+    dom.firsatBolum.hidden = true;
+    dom.firsatBaglanti.hidden = true;
+    dom.gunun.hidden = true;
+    dom.katalogOzet.hidden = true;
+    dom.ayakReyonSutun.hidden = true;   // yoksa başlığı boş listeyle asılı kalır
+
+    // Kontroller görünür ama işe yaramaz durumdaydı; tıklanabilir bırakmayalım
+    araclariKilitle(true);
+
+    el('tekrar-dene').addEventListener('click', baslat, { once: true });
+  }
+
+  function araclariKilitle(kilit) {
+    [dom.arama, dom.siralama, dom.indirimSuzgec, dom.fiyatMin, dom.fiyatMax]
+      .forEach((e) => { e.disabled = kilit; });
+  }
+
+  async function veriGetir() {
+    const yanit = await fetch(VERI_ADRESI, { cache: 'no-cache' });
+    if (!yanit.ok) throw new Error(`Sunucu ${yanit.status} döndü`);
+
+    const veri = await yanit.json();
+    if (!Array.isArray(veri.urunler) || !Array.isArray(veri.reyonlar)) {
+      throw new Error('Veri beklenen yapıda değil');
+    }
+    return veri;
+  }
+
+  let olaylarBagli = false;
+
+  async function baslat() {
+    yukleniyorGoster();
+    try {
+      const veri = await veriGetir();
+
+      REYONLAR = veri.reyonlar;
+      URUNLER = veri.urunler;
+      GUNCELLENDI = veri.guncellendi || null;
+
+      endeksleriKur();
+
+      // Hata ekranında gizlediklerimizi geri aç (tekrar dene yolu için)
+      dom.katalogOzet.hidden = false;
+      dom.firsatBolum.hidden = false;
+      dom.firsatBaglanti.hidden = false;
+      dom.gunun.hidden = false;
+      dom.ayakReyonSutun.hidden = false;
+      araclariKilitle(false);
+
+      urldenOku();
+      veriTarihiCiz();
+      reyonlariCiz();
+      vitrinCiz();
+      katalogCiz();
+      detaySenkron();   // ?urun= ile açılan bağlantı doğrudan pencereyi açsın
+
+      if (!olaylarBagli) { olaylariBagla(); olaylarBagli = true; }
+    } catch (e) {
+      hataGoster(e && e.message ? e.message : String(e));
+    }
+  }
+
+  baslat();
 })();

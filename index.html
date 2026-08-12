@@ -91,7 +91,7 @@
         <ul class="tezgah-notu">
           <li><span aria-hidden="true">📍</span> Cumhuriyet Meydanı, tramvay durağının yanında</li>
           <li><span aria-hidden="true">🧊</span> Şarküteri reyonu her sabah yenilenir</li>
-          <!-- Metni app.js, products.js'teki VERI_TARIHI'nden yazar -->
+          <!-- Metni app.js, data/products.json'daki "guncellendi" alanından yazar -->
           <li><span aria-hidden="true">🗓️</span> <span id="veri-tarihi"></span></li>
         </ul>
       </div>
@@ -192,7 +192,7 @@
   <span aria-hidden="true">↑</span>
 </button>
 
-<script src="js/products.js"></script>
+<!-- Veri artık script etiketiyle değil, app.js içinden fetch ile geliyor -->
 <script src="js/app.js"></script>
 
 <!-- Vercel analitiği, paket gerektirmeyen kurulum. İkisi ayrı ürün, ayrı ayrı
