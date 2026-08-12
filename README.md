@@ -7,13 +7,20 @@ gösterilir; sepet, sipariş ya da ödeme yoktur. Sadece frontend.
 
 ## Çalıştırma
 
-`index.html` dosyasını doğrudan tarayıcıda açabilirsin. Yerel sunucuyla denemek için:
+**Bir yerel sunucu gerekiyor:**
 
 ```
 npx serve .
 ```
 
-Bağımlılık, paket yöneticisi ve build adımı yok — depoyu klonlayıp açman yeterli.
+`index.html`'i çift tıklayıp `file://` ile açmak **çalışmaz**. Ürün verisi artık
+`data/products.json` dosyasından `fetch` ile okunuyor; tarayıcılar `file://`
+altında `fetch`'i farklı-kaynak sayıp engelliyor. Sayfa bu durumda boş kalmaz,
+"Katalog yüklenemedi" hatasını gösterir — ama ürünleri göremezsin.
+
+Bağımlılık, paket yöneticisi ve build adımı yok; yalnızca dosyaları HTTP
+üzerinden servis eden bir sunucu yeterli (`npx serve`, `python -m http.server`,
+VS Code Live Server — hepsi olur).
 
 ## Yayın
 
@@ -37,11 +44,46 @@ kalkar.
 ```
 index.html               Sayfa iskeleti
 css/style.css            Tüm stiller (tek dosya, CSS değişkenleriyle)
-js/products.js           Ürün kataloğu — 470 ürün, 13 reyon (otomatik üretildi)
-js/app.js                Filtre, arama, sıralama, birim fiyat, detay penceresi
+data/products.json       Ürün kataloğu — 470 ürün, 13 reyon (otomatik üretildi)
+js/app.js                Veriyi getirir; filtre, arama, sıralama, birim fiyat, detay
 scripts/veri-kontrol.js  Veri doğrulama (aşağıya bak)
 og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
 ```
+
+### Veri biçimi
+
+`data/products.json` saf JSON'dur, üç üst düzey anahtarı vardır:
+
+```json
+{
+  "guncellendi": "2026-08-11T00:00:00+03:00",
+  "reyonlar": [ { "id": "sarkuteri", "ad": "Et & Şarküteri", "ikon": "🥓" } ],
+  "urunler":  [ {
+    "id": "u065",
+    "ad": "Sütaş %1 Yağlı Süt 1 L",
+    "reyon": "kahvaltilik",
+    "gorsel": "https://…",
+    "fiyat": 39.5,
+    "eskiFiyat": 44.5,
+    "kaynak": "a101",
+    "miktar": 1,
+    "birim": "L",
+    "stokta": true
+  } ]
+}
+```
+
+- **`miktar` / `birim`** — birim fiyat bunlardan hesaplanır. `birim` yalnızca
+  `kg`, `L` ya da `adet` olabilir; `miktar` da o birime çevrilmiş değerdir
+  (500 g → `0.5` + `kg`). Ürün adından çıkarılamadıysa **ikisi de `null`**;
+  tahmin edilmez. Bu durumda `app.js` adı yeniden ayrıştırmayı dener.
+- **`stokta`** — `false` olan ürün kartta "Şu an yok" rozetiyle görünür,
+  soluklaşır ve her sıralamada listenin sonuna atılır. Katalogdan çıkarılmaz.
+- **`guncellendi`** — ISO 8601. Sayfadaki tarih rozeti ve `sitemap.xml`'in
+  `lastmod` değeri bununla hizalıdır (kontrolü `veri-kontrol.js` yapar).
+  Kaynak veride yalnızca gün bilgisi vardı; saat kısmı anlamlı değildir.
+- Reyonlarda **ürün sayısı tutulmaz** — çalışma anında ürün listesinden
+  hesaplanır, böylece veriyle sayaç birbirinden ayrışamaz.
 
 ## Neler var
 
@@ -49,12 +91,14 @@ og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
 - **Arama** — Türkçe karakter duyarsız; "cıkolata" yazsan da "Çikolata"yı bulur.
   `/` tuşu arama kutusuna odaklanır.
 - **Sıralama** — reyon sırası, artan/azalan fiyat, birim fiyat, en çok indirim, A–Z.
-- **Birim fiyat** — ₺/kg, ₺/L ya da ₺/adet, ürün adındaki miktardan hesaplanır
-  (`4x80 Ml`, `1,25 L`, `32'li` gibi kalıplar dahil). Katalogun yaklaşık üçte
-  ikisinde çıkıyor; çıkmayanlarda satır hiç basılmaz. 1 kg / 1 L ambalajda da
-  basılmaz, çünkü birim fiyat etiket fiyatının aynısı olur.
+- **Birim fiyat** — ₺/kg, ₺/L ya da ₺/adet. Önce verideki `miktar`/`birim`
+  alanlarına bakılır; onlar boşsa ürün adı ayrıştırılır (`4x80 Ml`, `1,25 L`,
+  `32'li` gibi kalıplar dahil). 470 ürünün 382'sinde ölçü var. 1 kg / 1 L
+  ambalajda satır basılmaz, çünkü birim fiyat etiket fiyatının aynısı olur.
   Sıralamada ₺/adet ayrı grupta tutulur: ₺1,60/adet ile ₺214/kg kıyaslanabilir
   şeyler değil, tek listede sıralanınca ucuz görünen adetliler başa geçiyordu.
+- **Stok durumu** — `stokta: false` olan ürün "Şu an yok" rozetiyle, soluk
+  görselle ve listenin sonunda görünür.
 - **Ürün ayrıntısı** — karta tıklayınca açılır (native `<dialog>`: Esc ve odak
   tuzağı tarayıcıdan gelir). Büyük görsel, birim fiyat, önceki fiyat ve verinin
   hangi katalogdan geldiği. Adres çubuğuna `?urun=u001` yazılır, bağlantı
@@ -64,7 +108,7 @@ og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
 - **Düşen etiketler** — indirimli ürünlerin yatay rayı. Katalogda hiç indirim
   kalmazsa bu bölüm de ona giden düğme de gizlenir.
 - **Veri tarihi rozeti** — vitrinde fiyatların hangi güne ait olduğu yazar.
-  Metin `VERI_TARIHI`'nden üretilir, elle yazılmaz ki eskimesin.
+  Metin `guncellendi` alanından üretilir, elle yazılmaz ki eskimesin.
 - **Paylaşılabilir bağlantı** — seçili reyon, arama, sıralama, filtreler ve açık
   ürün adres çubuğuna yazılır (`?reyon=dondurma&ara=çubuk&sirala=ucuz`), geri
   tuşu önceki duruma döner. `file://` ile açıldığında tarayıcı buna izin vermez;
@@ -84,7 +128,7 @@ tentesinden geliyor. Yazı tipleri: Bricolage Grotesque (başlıklar), Figtree (
 ## Veri
 
 Ürün adları, görselleri ve fiyatları iki kaynaktan, 11 Ağustos 2026'da alınmıştır
-ve `js/products.js` içinde statik olarak durur:
+ve `data/products.json` içinde statik olarak durur:
 
 | Kaynak | Ürün |
 | --- | --- |
@@ -114,10 +158,11 @@ Site bir katalogdur: ürünleri ve fiyatları gösterir, sipariş almaz.
 node scripts/veri-kontrol.js
 ```
 
-`js/products.js` her yeniden üretildiğinde çalıştır. Hata varsa 1 ile çıkar.
+`data/products.json` her yeniden üretildiğinde çalıştır. Hata varsa 1 ile çıkar.
 
-Yapısal kontrollerin (sayaçlar, tekrarlı id/ad, geçersiz fiyat, eksik görsel,
-`eskiFiyat > fiyat`) yanında **anlamsal** kontroller de yapar — yukarıdaki iki
+Yapısal kontrollerin (reyon dağılımı, tekrarlı id/ad, geçersiz fiyat, eksik
+görsel, `eskiFiyat > fiyat`, `miktar`/`birim`/`stokta` alanlarının tipi ve
+tutarlılığı) yanında **anlamsal** kontroller de yapar — yukarıdaki iki
 afiş kaydı yapısal olarak kusursuzdu, o yüzden ilk denetimden geçmişlerdi:
 
 - **Ad makullüğü** — tek kelimelik ya da slug biçimli adlar (`10-tl-urunleri`)
