@@ -35,7 +35,8 @@
     girise();
   });
 
-  (async function baslat() {
+  /** Kapı bekçisi. Oturum yoksa ya da şifre hâlâ geçiciyse girişe atar. */
+  async function kapiKontrol() {
     let veri;
     try {
       const y = await fetch('/api/yonetici/durum', { cache: 'no-store' });
@@ -55,5 +56,27 @@
 
     dom.yukleniyor.hidden = true;
     dom.panel.hidden = false;
-  })();
+  }
+
+  /* Geri/ileri düğmesi ve bfcache.
+
+     Tarayıcı sayfayı geri-ileri önbelleğinden (bfcache) canlandırdığında
+     script YENİDEN ÇALIŞMAZ: DOM olduğu gibi geri gelir. Oturum bu arada
+     düşmüşse — başka sekmede çıkış yapılmış, süre dolmuş, şifre
+     değiştirilmiş olabilir — çıkmış kullanıcı panel ekranını görmeye
+     devam eder.
+
+     pageshow, bfcache'ten dönüşte de tetikleniyor ve persisted=true
+     oluyor. O durumda paneli hemen gizleyip kapıyı yeniden çalıyoruz.
+
+     Headless Chrome'da bfcache'i tetikleyemedim, ama Safari/iOS bunu
+     agresif kullanıyor ve panel telefonda açılacak. Ucuz koruma. */
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;               // normal yükleme: baslat() zaten çalıştı
+    dom.panel.hidden = true;                // önce gizle, sonra sor
+    dom.yukleniyor.hidden = false;
+    kapiKontrol();
+  });
+
+  kapiKontrol();
 })();

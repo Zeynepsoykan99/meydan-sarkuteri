@@ -154,7 +154,7 @@
      Zaten girişliyse forma hiç bakmadan panele. Şifre değiştirmesi
      gerekiyorsa doğrudan zorunlu ekrana. */
 
-  (async function baslat() {
+  async function durumaGoreEkran() {
     try {
       const y = await fetch('/api/oturum', { cache: 'no-store' });
       const veri = await y.json();
@@ -168,5 +168,24 @@
       /* durum okunamadıysa giriş formunu göster */
     }
     ekranGoster('giris');
-  })();
+  }
+
+  /* Panelde iken geri düğmesiyle buraya dönülürse sayfa bfcache'ten
+     canlanır ve script yeniden çalışmaz; ekranda o anki duruma
+     uymayan bir form kalır (örneğin hâlâ girişliyken giriş formu, ya
+     da yarım doldurulmuş şifre alanları). pageshow ile durumu yeniden
+     soruyor ve alanları temizliyoruz. */
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    dom.sifre.value = '';
+    dom.mevcutSifre.value = dom.yeniSifre.value = dom.yeniSifreTekrar.value = '';
+    hataGizle(dom.girisHata);
+    hataGizle(dom.degistirHata);
+    dom.girisForm.hidden = true;
+    dom.degistirForm.hidden = true;
+    dom.yukleniyor.hidden = false;
+    durumaGoreEkran();
+  });
+
+  durumaGoreEkran();
 })();

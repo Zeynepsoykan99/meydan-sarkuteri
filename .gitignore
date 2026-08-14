@@ -16,3 +16,6 @@ node_modules/
 
 # Gecici yonetici sifresi — asla depoya girmez
 .gecici-sifre.txt
+
+# Gorsel dogrulama ekran goruntuleri (yerel arac ciktisi)
+.gorsel/
