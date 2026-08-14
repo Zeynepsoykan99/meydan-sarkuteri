@@ -13,9 +13,9 @@
    ===================================================================== */
 
 import {
-  sqlAl, parolaDogrula, SAHTE_HASH, jetonUret, jetonOzeti, cerezYaz,
+  sqlAl, parolaDogrula, SAHTE_HASH, oturumAc, cerezYaz,
   onbelleksiz, metodKontrol, istemciIp, basarisizDenemeSayisi,
-  denemeKaydet, bakimZamaniMi, bakimYap, OTURUM_GUN, SINIR, PENCERE_DK,
+  denemeKaydet, bakimZamaniMi, bakimYap, SINIR, PENCERE_DK,
 } from './_lib/auth.js';
 
 const GENEL_HATA = 'Kullanıcı adı veya şifre hatalı';
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     }
 
     const kayitlar = await sql`
-      SELECT id, kullanici_adi, parola_hash
+      SELECT id, kullanici_adi, parola_hash, sifre_degistirmeli
         FROM yoneticiler
        WHERE kullanici_adi = ${kullaniciAdi}
        LIMIT 1
@@ -77,13 +77,7 @@ export default async function handler(req, res) {
     }
 
     // --- oturum aç
-    const jeton = jetonUret();
-    const biter = new Date(Date.now() + OTURUM_GUN * 24 * 60 * 60 * 1000);
-
-    await sql`
-      INSERT INTO oturumlar (token_hash, yonetici_id, biter)
-      VALUES (${jetonOzeti(jeton)}, ${yonetici.id}, ${biter.toISOString()})
-    `;
+    const { jeton, biter } = await oturumAc(sql, yonetici.id);
     await sql`UPDATE yoneticiler SET son_giris = now() WHERE id = ${yonetici.id}`;
 
     await denemeKaydet(sql, ip, true);
@@ -92,6 +86,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       girisli: true,
       kullaniciAdi: yonetici.kullanici_adi,
+      sifreDegistirmeli: yonetici.sifre_degistirmeli === true,
       oturumBiter: biter.toISOString(),
     });
   } catch (e) {

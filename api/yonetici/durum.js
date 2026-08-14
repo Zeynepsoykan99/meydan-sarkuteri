@@ -24,6 +24,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       kullaniciAdi: oturum.kullanici_adi,
       oturumBiter: oturum.biter,
+      sifreDegistirmeli: oturum.sifre_degistirmeli === true,
       urunSayisi: adet,
     });
   } catch (e) {

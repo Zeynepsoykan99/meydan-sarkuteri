@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       girisli: true,
       kullaniciAdi: oturum.kullanici_adi,
+      sifreDegistirmeli: oturum.sifre_degistirmeli === true,
     });
   } catch (e) {
     console.error('oturum sorgusu başarısız:', e.message);

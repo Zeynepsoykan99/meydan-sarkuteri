@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel — Meydan Şarküteri</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#D6202A">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D6202A'/%3E%3Cpath d='M6 22V10h4l6 8 6-8h4v12' fill='none' stroke='%23FFCE00' stroke-width='3.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="tente" aria-hidden="true"></div>
+
+<!-- Oturum doğrulanana kadar içerik gizli: girişsiz birine bir an
+     bile panel iskeleti göstermiyoruz. -->
+<p class="kimlik-yukleniyor" id="yukleniyor" role="status">Kontrol ediliyor…</p>
+
+<div id="panel" hidden>
+  <header class="baslik">
+    <div class="baslik-ust kucak panel-ust">
+      <a class="logo" href="/">
+        <span class="logo-mark" aria-hidden="true">M</span>
+        <span class="logo-yazi">
+          <strong>Meydan</strong>
+          <em>Şarküteri</em>
+        </span>
+      </a>
+
+      <p class="panel-kullanici">
+        <span class="kas panel-kas">Panel</span>
+        <strong id="kullanici-adi"></strong>
+      </p>
+
+      <button class="dugme dugme-hat panel-cikis" id="cikis" type="button">Çıkış</button>
+    </div>
+  </header>
+
+  <main class="kucak panel-govde">
+    <div class="bolum-baslik">
+      <h1>Tezgâh yönetimi</h1>
+      <p id="panel-ozet"></p>
+    </div>
+
+    <div class="panel-bos">
+      <p class="bos-baslik">Ürün yönetimi yakında.</p>
+      <p class="bos-alt">
+        Bu alan bir sonraki adımda ürün ekleme, fiyat düzenleme ve stok
+        işaretleme için kullanılacak.
+      </p>
+    </div>
+  </main>
+</div>
+
+<script src="js/panel.js"></script>
+</body>
+</html>

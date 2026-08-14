@@ -582,6 +582,101 @@ button { cursor: pointer; }
 .basa-don:hover { background: var(--kirmizi); color: var(--beyaz); }
 .basa-don:active { transform: translateY(1px); }
 
+/* ---------- Kimlik: giriş ve panel ----------
+   Katalogla aynı dil: aynı :root değişkenleri, aynı .dugme, aynı
+   tente. Yeni bir tasarım dili yok.
+
+   Telefonda kullanılacak: girdiler 16px (altına inince iOS sayfayı
+   yakınlaştırıyor) ve dokunma hedefleri 44px'in altına düşmüyor. */
+
+.kimlik-govde { background: var(--tezgah); }
+
+.kimlik {
+  display: grid; place-items: center;
+  min-height: calc(100dvh - 10px);      /* 10px: tente */
+  padding: 24px 20px 48px;
+}
+
+.kimlik-kart {
+  width: min(100%, 420px);
+  background: var(--beyaz);
+  border: 3px solid var(--murekkep);
+  border-radius: var(--r-buyuk);
+  box-shadow: 8px 10px 0 rgba(27, 25, 23, .9);
+  padding: 30px 26px 26px;
+}
+
+.kimlik-logo { margin-bottom: 22px; }
+
+.kimlik-yukleniyor {
+  padding: 64px 20px; text-align: center; color: var(--murekkep-soluk);
+}
+
+.kimlik-baslik { font-size: clamp(24px, 5vw, 30px); }
+.kimlik-alt { margin-top: 8px; color: var(--murekkep-soluk); font-size: 15px; }
+
+.kimlik-etiket {
+  display: block; margin: 18px 0 6px;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--murekkep-soluk);
+}
+
+.kimlik-girdi {
+  width: 100%;
+  min-height: 48px;                     /* dokunma hedefi */
+  padding: 12px 14px;
+  font-size: 16px;                      /* iOS yakınlaştırma eşiği */
+  background: var(--tezgah);
+  border: 1.5px solid var(--cizgi);
+  border-radius: var(--r);
+  transition: border-color .16s, background .16s;
+}
+.kimlik-girdi:focus {
+  background: var(--beyaz); border-color: var(--murekkep); outline: none;
+}
+.kimlik-girdi:focus-visible { outline: 3px solid var(--sari); outline-offset: 1px; }
+
+.kimlik-ipucu { margin-top: 6px; font-size: 13px; color: var(--murekkep-soluk); }
+
+.kimlik-dugme {
+  width: 100%; min-height: 52px; margin-top: 24px; font-size: 16px;
+}
+.kimlik-dugme:disabled { opacity: .6; cursor: progress; }
+
+.kimlik-hata {
+  margin-top: 18px; padding: 12px 14px;
+  background: var(--kirmizi-sis);
+  border: 1.5px solid var(--kirmizi);
+  border-radius: var(--r);
+  font-size: 14.5px; font-weight: 600; color: var(--kirmizi-koyu);
+}
+
+.kimlik-geri { margin-top: 22px; text-align: center; font-size: 14.5px; }
+.kimlik-geri a { color: var(--murekkep-soluk); text-decoration: none; }
+.kimlik-geri a:hover { color: var(--kirmizi); }
+
+/* ---------- Panel ---------- */
+.panel-ust { grid-template-columns: auto minmax(0, 1fr) auto; }
+.panel-kullanici { justify-self: center; text-align: center; line-height: 1.25; }
+.panel-kas { margin-bottom: 4px; font-size: 10.5px; padding: 4px 10px; }
+.panel-kullanici strong { display: block; font-size: 15px; }
+.panel-cikis { min-height: 44px; padding: 10px 20px; }
+
+.panel-govde { padding: 44px 0 80px; }
+
+.panel-bos {
+  margin-top: 28px; padding: 64px 24px; text-align: center;
+  border: 2px dashed var(--cizgi); border-radius: var(--r-buyuk);
+}
+.panel-bos .bos-alt { max-width: 46ch; margin: 10px auto 0; }
+
+@media (max-width: 780px) {
+  .panel-ust { grid-template-columns: 1fr auto; row-gap: 10px; }
+  .panel-kullanici { grid-column: 1 / -1; grid-row: 2; justify-self: start; text-align: left; }
+  .kimlik-kart { padding: 24px 20px 22px; box-shadow: 5px 6px 0 rgba(27, 25, 23, .9); }
+}
+
 /* ---------- Boş durum ---------- */
 .bos { padding: 76px 20px; text-align: center; border: 2px dashed var(--cizgi); border-radius: var(--r-buyuk); }
 .bos-baslik { font-family: var(--display); font-weight: 800; font-size: 26px; }

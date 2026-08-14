@@ -152,8 +152,17 @@ CREATE TABLE IF NOT EXISTS yoneticiler (
   -- ileride maliyet artırıldığında eski kayıtlar da doğrulanabilsin.
   parola_hash   text NOT NULL,
   olusturuldu   timestamptz NOT NULL DEFAULT now(),
-  son_giris     timestamptz
+  son_giris     timestamptz,
+  -- Geçici şifreyle açılan hesap ilk girişte şifre değiştirmeye zorlanır.
+  sifre_degistirmeli boolean NOT NULL DEFAULT false
 );
+
+-- @@
+
+-- Tablo zaten varsa CREATE TABLE IF NOT EXISTS sütun eklemez; idempotent
+-- kalmak için ayrı bir ALTER gerekiyor.
+ALTER TABLE yoneticiler
+  ADD COLUMN IF NOT EXISTS sifre_degistirmeli boolean NOT NULL DEFAULT false;
 
 -- @@
 

@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 
+# Yönetim sayfaları indekslenmesin. Sayfalarda ayrıca
+# <meta name="robots" content="noindex,nofollow"> var — robots.txt
+# taramayı engeller, meta etiketi indekslemeyi; ikisi farklı şeyler.
+Disallow: /giris.html
+Disallow: /panel.html
+
 Sitemap: https://meydan-sarkuteri.vercel.app/sitemap.xml

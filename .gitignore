@@ -13,3 +13,6 @@ desktop.ini
 !.env.example
 
 node_modules/
+
+# Gecici yonetici sifresi — asla depoya girmez
+.gecici-sifre.txt

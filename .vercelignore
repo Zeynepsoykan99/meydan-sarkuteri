@@ -11,3 +11,6 @@
 db/
 scripts/
 PROJE-RAPORU.md
+
+# Gecici yonetici sifresi — asla yayina girmez
+.gecici-sifre.txt

@@ -22,6 +22,7 @@ const scryptAsync = promisify(scrypt);
 
 export const CEREZ_ADI = 'oturum';
 export const OTURUM_GUN = 30;
+export const ASGARI_PAROLA = 12;
 
 /* ---------------- parola ----------------
    scrypt: bellek-zorlu, GPU ile kaba kuvvete karşı bcrypt'ten dirençli.
@@ -137,10 +138,23 @@ export async function oturumDogrula(req) {
      WHERE o.token_hash = ${ozet}
        AND o.yonetici_id = y.id
        AND o.biter > now()
-    RETURNING o.id, o.biter, y.id AS yonetici_id, y.kullanici_adi
+    RETURNING o.id, o.biter, y.id AS yonetici_id, y.kullanici_adi,
+              y.sifre_degistirmeli
   `;
 
   return satirlar[0] ?? null;
+}
+
+/** Kullanıcıya yeni bir oturum açar ve ham jetonu döndürür.
+    Ham jeton yalnızca çağırana verilir; veritabanına özeti gider. */
+export async function oturumAc(sql, yoneticiId) {
+  const jeton = jetonUret();
+  const biter = new Date(Date.now() + OTURUM_GUN * 24 * 60 * 60 * 1000);
+  await sql`
+    INSERT INTO oturumlar (token_hash, yonetici_id, biter)
+    VALUES (${jetonOzeti(jeton)}, ${yoneticiId}, ${biter.toISOString()})
+  `;
+  return { jeton, biter };
 }
 
 /* ---------------- bakım ----------------
