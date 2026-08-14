@@ -135,3 +135,58 @@ SELECT setval(
   ),
   true
 );
+
+-- @@
+
+-- =====================================================================
+-- Kimlik doğrulama
+--
+-- Not: burada YALNIZCA oturum açma altyapısı var. Ürün/fiyat yazma ucu
+-- bilerek yok; o, auth doğrulandıktan sonraki adımda gelecek.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS yoneticiler (
+  id            serial PRIMARY KEY,
+  kullanici_adi text UNIQUE NOT NULL,
+  -- Biçim: scrypt$N$r$p$salt$hash — parametreler hash'in içinde durur ki
+  -- ileride maliyet artırıldığında eski kayıtlar da doğrulanabilsin.
+  parola_hash   text NOT NULL,
+  olusturuldu   timestamptz NOT NULL DEFAULT now(),
+  son_giris     timestamptz
+);
+
+-- @@
+
+CREATE TABLE IF NOT EXISTS oturumlar (
+  id           bigserial PRIMARY KEY,
+  -- Ham token ASLA saklanmaz; yalnızca SHA-256 özeti. Veritabanı sızarsa
+  -- özetlerden oturum çalınamaz.
+  token_hash   text UNIQUE NOT NULL,
+  yonetici_id  int REFERENCES yoneticiler(id) ON DELETE CASCADE,
+  olusturuldu  timestamptz NOT NULL DEFAULT now(),
+  biter        timestamptz NOT NULL,
+  son_kullanim timestamptz NOT NULL DEFAULT now()
+);
+
+-- @@
+
+CREATE INDEX IF NOT EXISTS oturumlar_biter_idx ON oturumlar (biter);
+
+-- @@
+
+CREATE TABLE IF NOT EXISTS giris_denemeleri (
+  id        bigserial PRIMARY KEY,
+  ip        text,
+  zaman     timestamptz NOT NULL DEFAULT now(),
+  basarili  boolean NOT NULL
+);
+
+-- @@
+
+-- Hız sınırı sorgusu "son 15 dakikada bu IP'den kaç başarısız deneme"
+-- diye soruyor; ip + zaman birlikte indekslenince o sorgu tarama yapmıyor.
+CREATE INDEX IF NOT EXISTS giris_denemeleri_zaman_idx ON giris_denemeleri (zaman);
+
+-- @@
+
+CREATE INDEX IF NOT EXISTS giris_denemeleri_ip_zaman_idx ON giris_denemeleri (ip, zaman DESC);

@@ -1,0 +1,13 @@
+# Deploy'a girmeyecek dosyalar.
+#
+# Bunlar olmadan da site ve api/ çalışıyor: şema ile script'ler yalnızca
+# yerel araçlar. Buraya yazılmasalar Vercel onları statik dosya sayıp
+# yayımlıyor — /db/schema.sql ve /scripts/*.js canlıda 200 dönüyordu.
+# Sır içermiyorlardı ama iç yapıyı gereksiz yere açıyorlardı ve
+# yonetici-ekle.js de aynı yoldan yayına çıkacaktı.
+#
+# data/products.json BURAYA YAZILMAZ — API düşerse arayüz ona düşüyor.
+
+db/
+scripts/
+PROJE-RAPORU.md

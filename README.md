@@ -62,6 +62,7 @@ npm install
 npm run migrate           # db/schema.sql — iki kez çalıştırmak güvenli
 npm run seed              # data/products.json -> veritabanı
 npm run seed -- --temiz   # önce boşalt, sonra bas
+npm run yonetici-ekle     # ilk yöneticiyi oluştur
 ```
 
 `seed`, `--temiz` olmadan yalnızca ekler; tablo doluysa hata verip
@@ -91,8 +92,44 @@ verinin yazılmasını en baştan engeller.
 şekildedir, böylece arayüz iki kaynağı ayırt etmek zorunda kalmaz.
 GET dışındaki metodlar 405 döner.
 
-**Yazma ucu yoktur.** Kimlik doğrulama kurulmadan korumasız bir
-POST/PUT/DELETE yayına giderse katalogu herkes değiştirebilir.
+**Ürün/fiyat yazma ucu yoktur.** Katalog uçları yalnızca okur.
+
+## Yönetici girişi
+
+```
+npm run yonetici-ekle
+```
+
+Kullanıcı adını sorar, şifreyi **ekrana yazmadan** iki kez ister (en az 12
+karakter). Şifre argüman olarak alınmaz — argüman kabuk geçmişine ve `ps`
+çıktısına düşer. Kullanıcı zaten varsa, onay sorarak şifresini günceller.
+
+| Uç | Ne yapar |
+| --- | --- |
+| `POST /api/giris` | `{ kullaniciAdi, parola }` → oturum çerezi |
+| `POST /api/cikis` | Oturumu veritabanından siler, çerezi temizler |
+| `GET /api/oturum` | Durum sorgusu; oturum yoksa da 200 + `{girisli:false}` |
+| `GET /api/yonetici/durum` | **Korumalı** — oturum yoksa 401 |
+
+Nasıl çalıştığı:
+
+- **Şifre** scrypt ile saklanır (her şifreye 16 baytlık rastgele salt).
+  Parametreler hash'in içindedir (`scrypt$N$r$p$salt$hash`) ki maliyet
+  ileride artırılınca eski kayıtlar da doğrulanabilsin. Karşılaştırma
+  `timingSafeEqual` ile yapılır.
+- **Oturum jetonu** 32 rastgele bayttır. Veritabanına yalnızca SHA-256
+  özeti yazılır; ham jeton sadece çerezde durur. Veritabanı sızsa bile
+  özetlerden oturum çalınamaz.
+- **Çerez** `HttpOnly`, `Secure`, `SameSite=Lax`, 30 gün.
+- **Hız sınırı**: aynı IP'den 15 dakikada 5 başarısız denemeden sonra
+  şifre kontrol bile edilmeden 429 döner.
+- Kullanıcı bulunamadığında da sahte bir hash doğrulanır; yanıt
+  süresinden kullanıcının var olup olmadığı anlaşılmaz. Hata mesajı her
+  durumda aynıdır: hangisinin yanlış olduğu söylenmez.
+- Kimlik uçları `Cache-Control: no-store` döner; CDN bunları saklamaz.
+
+Ek bir ortam değişkeni **gerekmiyor**: oturumlar veritabanında tutuluyor,
+imzalı jeton kullanılmadığı için ayrı bir imza sırrı yok.
 
 ## Dosyalar
 
