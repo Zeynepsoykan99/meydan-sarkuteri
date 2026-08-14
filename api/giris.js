@@ -15,7 +15,7 @@
 import {
   sqlAl, parolaDogrula, SAHTE_HASH, jetonUret, jetonOzeti, cerezYaz,
   onbelleksiz, metodKontrol, istemciIp, basarisizDenemeSayisi,
-  denemeKaydet, eskiOturumlariTemizle, OTURUM_GUN, SINIR, PENCERE_DK,
+  denemeKaydet, bakimZamaniMi, bakimYap, OTURUM_GUN, SINIR, PENCERE_DK,
 } from './_lib/auth.js';
 
 const GENEL_HATA = 'Kullanıcı adı veya şifre hatalı';
@@ -47,18 +47,11 @@ export default async function handler(req, res) {
 
   const ip = istemciIp(req);
 
-  // GEÇİCİ TANI — 5.11 ölçümü. Production'da da gelen X-Forwarded-For'un
-  // ezilip ezilmediğine bakıyoruz. ÖLÇÜM BİTİNCE KALDIRILACAK.
-  // IP sır değil; parola ve jeton buraya asla yazılmıyor.
-  console.log('TANI-IP-PROD', JSON.stringify({
-    istemciIpDonusu: ip,
-    xForwardedFor: req.headers['x-forwarded-for'] ?? null,
-    xRealIp: req.headers['x-real-ip'] ?? null,
-    xVercelForwardedFor: req.headers['x-vercel-forwarded-for'] ?? null,
-    soketUzak: req.socket?.remoteAddress ?? null,
-  }));
-
   try {
+    // --- bakım: ~%2 ihtimalle eski kayıtları topla.
+    // Ayrı zamanlayıcı yok; giriş ucu yeterince sık çağrılıyor.
+    if (bakimZamaniMi()) await bakimYap(sql);
+
     // --- hız sınırı: parolaya bakmadan önce
     const basarisiz = await basarisizDenemeSayisi(sql, ip);
     if (basarisiz >= SINIR) {
@@ -94,7 +87,6 @@ export default async function handler(req, res) {
     await sql`UPDATE yoneticiler SET son_giris = now() WHERE id = ${yonetici.id}`;
 
     await denemeKaydet(sql, ip, true);
-    eskiOturumlariTemizle(sql);   // beklemeye gerek yok
 
     cerezYaz(res, jeton);
     return res.status(200).json({

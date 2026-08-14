@@ -143,12 +143,49 @@ export async function oturumDogrula(req) {
   return satirlar[0] ?? null;
 }
 
-/** Süresi geçmiş oturumları temizler. Fırsat buldukça çağrılır; hata
-    verirse yutulur — temizlik, isteğin başarısına engel olmamalı. */
-export async function eskiOturumlariTemizle(sql) {
+/* ---------------- bakım ----------------
+   İki tablo sınırsız büyüyor: giris_denemeleri her denemede satır
+   ekliyor, oturumlar süresi dolmuş kayıtları tutuyor. Ayrı bir
+   zamanlayıcı kurmak yerine giriş ucunda düşük olasılıkla tetikliyoruz.
+
+   Neden await ediliyor: fire-and-forget bırakılsa serverless fonksiyon
+   yanıtı döndürüp donduğunda silme yarıda kalabilir. Bunun yerine
+   olasılığı düşük tutuyoruz — ortalama ek gecikme, 100 girişte 2 kez
+   ~50 ms, yani istek başına ~1 ms. Pratikte ölçülemez.
+
+   Hata yutuluyor: bakım patlarsa giriş patlamamalı. */
+
+export const BAKIM_OLASILIGI = 0.02;      // ~%2
+export const DENEME_SAKLAMA_GUN = 30;
+
+export function bakimZamaniMi() {
+  return Math.random() < BAKIM_OLASILIGI;
+}
+
+/** 30 günden eski giriş denemelerini ve süresi geçmiş oturumları siler.
+    Test edilebilmesi için dışa açık; normalde bakimZamaniMi() ile
+    çağrılır. Silinen satır sayılarını döndürür. */
+export async function bakimYap(sql) {
+  const sonuc = { denemeler: 0, oturumlar: 0, hata: null };
   try {
-    await sql`DELETE FROM oturumlar WHERE biter < now() - interval '1 day'`;
-  } catch { /* önemsiz */ }
+    const d = await sql`
+      DELETE FROM giris_denemeleri
+       WHERE zaman < now() - (${DENEME_SAKLAMA_GUN} * interval '1 day')
+      RETURNING id`;
+    sonuc.denemeler = d.length;
+
+    // Süresi dolan oturuma bir gün tolerans: hemen silmek yerine
+    // bekletmek, saat kaymalarında beklenmedik çıkışları önlüyor.
+    const o = await sql`
+      DELETE FROM oturumlar
+       WHERE biter < now() - interval '1 day'
+      RETURNING id`;
+    sonuc.oturumlar = o.length;
+  } catch (e) {
+    sonuc.hata = e.message;
+    console.error('bakım başarısız (yok sayıldı):', e.message);
+  }
+  return sonuc;
 }
 
 /* ---------------- hız sınırı ---------------- */
@@ -156,6 +193,30 @@ export async function eskiOturumlariTemizle(sql) {
 export const PENCERE_DK = 15;
 export const SINIR = 5;
 
+/* X-Forwarded-For'un EN SOLDAKİ değerini okuyoruz.
+ *
+ * Genel kural olarak bu güvensizdir: çoğu proxy istemcinin gönderdiği
+ * başlığın sağına kendi gördüğü IP'yi ekler, dolayısıyla en soldaki
+ * değer istemcinin uydurduğu şey olur ve IP başına hız sınırı
+ * atlanabilir hale gelir.
+ *
+ * Vercel'de durum farklı: platform gelen X-Forwarded-For başlığını
+ * EZİYOR, listeye eklemiyor. 14 Ağustos 2026'da hem preview hem
+ * production üzerinde ölçüldü — her istekte farklı sahte bir
+ * X-Forwarded-For (1.2.3.1 … 1.2.3.10) gönderildi; fonksiyona her
+ * seferinde tek değer olarak gerçek istemci IP'si ulaştı, sahte
+ * değerlerin hiçbiri ne log'a ne giris_denemeleri tablosuna düştü,
+ * ve hız sınırı 6. denemede yine 429 verdi.
+ * x-real-ip ve x-vercel-forwarded-for da aynı gerçek IP'yi taşıyor.
+ *
+ * DİKKAT: Bu güvenlik platform davranışına bağlı. Uygulama başka bir
+ * proxy arkasına taşınır ya da doğrudan internete açılırsa bu satır
+ * yeniden değerlendirilmeli — o durumda en SAĞDAKİ değeri almak ya da
+ * proxy'nin kendi ürettiği başlığa geçmek gerekir.
+ *
+ * req.socket.remoteAddress kullanılamıyor: Vercel'de her zaman
+ * 127.0.0.1 dönüyor (fonksiyon proxy'nin arkasında).
+ */
 export function istemciIp(req) {
   const iletilen = req.headers?.['x-forwarded-for'];
   if (typeof iletilen === 'string' && iletilen.length) {
