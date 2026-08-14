@@ -47,20 +47,6 @@ export default async function handler(req, res) {
 
   const ip = istemciIp(req);
 
-  // GEÇİCİ TANI — 5.9a ölçümü için. Hız sınırının sahte başlıkla
-  // atlanıp atlanamadığını anlamak üzere hangi başlıkların geldiğine
-  // bakıyoruz. ÖLÇÜM BİTİNCE KALDIRILACAK. (IP'ler sır değil; parola
-  // veya jeton buraya asla yazılmıyor.)
-  console.log('TANI-IP', JSON.stringify({
-    istemciIpDonusu: ip,
-    xForwardedFor: req.headers['x-forwarded-for'] ?? null,
-    xRealIp: req.headers['x-real-ip'] ?? null,
-    xVercelForwardedFor: req.headers['x-vercel-forwarded-for'] ?? null,
-    xVercelProxiedFor: req.headers['x-vercel-proxied-for'] ?? null,
-    xVercelIpCountry: req.headers['x-vercel-ip-country'] ?? null,
-    soketUzak: req.socket?.remoteAddress ?? null,
-  }));
-
   try {
     // --- hız sınırı: parolaya bakmadan önce
     const basarisiz = await basarisizDenemeSayisi(sql, ip);
