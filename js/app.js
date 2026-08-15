@@ -686,18 +686,34 @@
     }
   }
 
-  function yedekNotu(goster) {
+  /* Yedeğe düşüldüğünde gösterilen not.
+
+     Tarihi yazıyoruz: tarihsiz bir "güncel olmayabilir" uyarısında bir
+     günlük veri ile bir aylık veri aynı görünüyor. Kullanıcı ne kadar
+     eskiye baktığını bilmeli.
+
+     Damga okunamazsa genel metne düşüyoruz — yanlış tarih göstermek,
+     tarih göstermemekten kötü. */
+  function yedekNotu(goster, damga) {
     let not = el('yedek-notu');
     if (!goster) { if (not) not.remove(); return; }
     if (not) return;
+
+    let metin = 'Canlı katalog şu an okunamadı, kayıtlı son kopya gösteriliyor.';
+    const t = damga ? new Date(damga) : null;
+    if (t && !isNaN(t)) {
+      const gun = t.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+      const gecenGun = Math.floor((Date.now() - t.getTime()) / 86400000);
+      const yas = gecenGun >= 1 ? ` (${gecenGun} gün önce)` : '';
+      metin = `Bu fiyatlar <time datetime="${kacar(damga)}">${gun}</time> itibarıyla${yas}. ` +
+              'Canlı katalog okunamadı, kayıtlı son kopya gösteriliyor.';
+    }
 
     not = document.createElement('p');
     not.id = 'yedek-notu';
     not.className = 'yedek-notu';
     not.setAttribute('role', 'status');
-    not.innerHTML =
-      '<strong>Fiyatlar güncel olmayabilir.</strong> ' +
-      'Canlı katalog şu an okunamadı, kayıtlı son kopya gösteriliyor.';
+    not.innerHTML = '<strong>Fiyatlar güncel olmayabilir.</strong> ' + metin;
     dom.katalogBolum.querySelector('.katalog-ust').after(not);
   }
 
@@ -713,7 +729,7 @@
       GUNCELLENDI = veri.guncellendi || null;
 
       if (yedekMi) console.warn('Canlı katalog okunamadı, yedeğe düşüldü:', apiSebep);
-      yedekNotu(yedekMi);
+      yedekNotu(yedekMi, veri.guncellendi);
 
       endeksleriKur();
 

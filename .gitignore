@@ -19,3 +19,6 @@ node_modules/
 
 # Gorsel dogrulama ekran goruntuleri (yerel arac ciktisi)
 .gorsel/
+
+# yedek-al.js yazma oncesi kopyasi
+data/products.json.onceki
