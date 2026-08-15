@@ -131,6 +131,13 @@ async function gizliSoru(metin) {
 /* ---------------- akış ---------------- */
 
 const pool = new Pool({ connectionString: url });
+// Boşta kalan bağlantı düşerse Pool 'error' fırlatıyor; dinleyicisi
+// olmazsa süreç anlaşılmaz bir yığın iziyle çöküyor. Yakalayıp
+// anlaşılır biçimde bildiriyoruz.
+pool.on('error', (e) => {
+  console.error('✗ veritabanı bağlantısı koptu:', e.message);
+  process.exit(1);
+});
 const istemci = await pool.connect();
 const bitir = async (kod) => { istemci.release(); await pool.end(); process.exit(kod); };
 

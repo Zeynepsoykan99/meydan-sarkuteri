@@ -8,7 +8,8 @@
     "kontrol": "node scripts/veri-kontrol.js",
     "migrate": "node --env-file-if-exists=.env.local scripts/migrate.js",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.js",
-    "yonetici-ekle": "node --env-file-if-exists=.env.local scripts/yonetici-ekle.js"
+    "yonetici-ekle": "node --env-file-if-exists=.env.local scripts/yonetici-ekle.js",
+    "yedek-al": "node --env-file-if-exists=.env.local scripts/yedek-al.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0"

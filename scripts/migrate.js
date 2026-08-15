@@ -50,6 +50,13 @@ const baslikAl = (ifade) => ifade
   .slice(0, 66) ?? '(?)';
 
 const pool = new Pool({ connectionString: url });
+// Boşta kalan bağlantı düşerse Pool 'error' fırlatıyor; dinleyicisi
+// olmazsa süreç anlaşılmaz bir yığın iziyle çöküyor. Yakalayıp
+// anlaşılır biçimde bildiriyoruz.
+pool.on('error', (e) => {
+  console.error('✗ veritabanı bağlantısı koptu:', e.message);
+  process.exit(1);
+});
 const istemci = await pool.connect();
 
 console.log(`db/schema.sql → ${ifadeler.length} ifade (tek işlem içinde)`);
