@@ -13,8 +13,28 @@
    Yalnızca okur. Yazma PATCH /api/yonetici/urun'de.
    ===================================================================== */
 
+import { readFileSync } from 'node:fs';
 import { sqlAl, oturumDogrula, onbelleksiz, metodKontrol } from '../_lib/auth.js';
 import { urunYuku } from '../_lib/urun.js';
+
+/* Yedek dosyasının damgası.
+
+   data/products.json elle alınıyor (npm run yedek-al) ve sessizce
+   eskiyebiliyor; site bir arıza sırasında ona düşünce eski fiyat
+   gösterir. Panel bunu söyleyebilsin diye damgayı buradan veriyoruz —
+   ayrı bir uç açmaya değmez.
+
+   Dosya okunamazsa null: panel şeridi hiç göstermiyor. Yedeğin
+   durumunu bilememek, yanlış bilmekten iyidir. */
+function yedekDamgasiOku() {
+  try {
+    const yol = new URL('../../data/products.json', import.meta.url);
+    const veri = JSON.parse(readFileSync(yol, 'utf8'));
+    return typeof veri.guncellendi === 'string' ? veri.guncellendi : null;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   onbelleksiz(res);
@@ -35,6 +55,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       guncellendi: damga[0]?.en_son ?? null,
+      yedekDamgasi: yedekDamgasiOku(),
       reyonlar,
       urunler: urunler.map((u) => urunYuku(u, true)),
     });
