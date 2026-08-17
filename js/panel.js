@@ -33,7 +33,7 @@
     sayiKontrolsuz: el('sayi-kontrolsuz'), sayiOlcusuz: el('sayi-olcusuz'),
     listeOzet: el('liste-ozet'), liste: el('urun-liste'), listeBos: el('liste-bos'),
     listeHata: el('liste-hata'), listeHataMetin: el('liste-hata-metin'),
-    listeHataKapat: el('liste-hata-kapat'),
+    listeHataKapat: el('liste-hata-kapat'), listeHataGiris: el('liste-hata-giris'),
 
     d: el('duzenle'), dGorsel: el('d-gorsel'), dReyon: el('d-reyon'), dAd: el('d-ad'),
     dKapat: el('d-kapat'), dHata: el('d-hata'),
@@ -61,8 +61,9 @@
   const girise = () => { location.replace(GIRIS); };
 
   /* ---------------- ağ ----------------
-     401 her yerden gelebilir (oturum 30 gün ama dolabilir); tek yerde
-     yakalayıp giriş sayfasına atıyoruz. */
+     401 her yerden gelebilir (oturum 30 gün ama dolabilir). Hata tek yerde
+     üretiliyor, ne yapılacağına çağıran karar veriyor: açılışta girişe,
+     iş sırasında bildirimle. */
 
   async function iste(adres, secenekler = {}) {
     let y;
@@ -73,7 +74,11 @@
       // "kaydettim sandım ama kaydolmadı" en kötü senaryo.
       throw { tur: 'ag', mesaj: 'Bağlantı kurulamadı. Değişiklik KAYDEDİLMEDİ.' };
     }
-    if (y.status === 401) { girise(); throw { tur: 'oturum', mesaj: 'Oturum sona erdi' }; }
+    // 401'de BURADA yönlendirmiyoruz. Yönlendirme, sahibinin ne
+    // kaybettiğini görmesinden önce olursa iş sessizce buharlaşır.
+    // Çağıran karar veriyor: açılışta doğrudan girişe, iş sırasında
+    // bildirimle.
+    if (y.status === 401) throw { tur: 'oturum', mesaj: 'Oturum sona erdi' };
 
     let veri = null;
     try { veri = await y.json(); } catch { /* gövdesiz olabilir */ }
@@ -220,8 +225,9 @@
      uyarı (reyon medyanı gibi istemcinin bilmediği sinyaller) yerinde
      duruyor — iki katman birlikte çalışıyor. */
 
-  function sor(mesaj) {
+  function sor(mesaj, evetMetni = 'Evet') {
     dom.onayMetin.innerHTML = mesaj;
+    dom.onayEvet.textContent = evetMetni;
     dom.onay.showModal();
     return new Promise((cevapla) => {
       const bitir = (karar) => {
@@ -417,6 +423,7 @@
 
   const onayGidiyor = new Set();     // aynı ürüne ikinci istek gitmesin
   const basarisizlar = new Set();    // bildirimde toplu gösterilecek adlar
+  const oturumKurbanlari = new Set();  // 401 yüzünden kaybedilen işler
 
   function bildirimGoster(ad, mesaj) {
     basarisizlar.add(ad);
@@ -425,6 +432,25 @@
       ? `${adlar[0]}: ${mesaj}`
       : `${adlar.length} ürün onaylanamadı (${adlar.slice(0, 2).join(', ')}…). ${mesaj}`;
     dom.listeHata.hidden = false;
+  }
+
+  /* Oturum bitti: sahibi neyi kaybettiğini görsün, girişe kendisi gitsin.
+     Otomatik yönlendirme yapılmıyor — yaptığı iş göz önünde kalıyor. */
+  function oturumBildirimi(ad) {
+    if (ad) oturumKurbanlari.add(ad);
+    const adlar = [...oturumKurbanlari];
+    const kayip = adlar.length === 0 ? ''
+      : adlar.length === 1
+        ? ` Son işlem KAYDEDİLMEDİ: ${adlar[0]}.`
+        : ` Şu ${adlar.length} işlem KAYDEDİLMEDİ: ${adlar.join(', ')}.`;
+    dom.listeHataMetin.textContent =
+      `Oturumunuz sona erdi.${kayip} Yeniden giriş yapmanız gerekiyor.`;
+    dom.listeHataGiris.hidden = false;
+    dom.listeHata.hidden = false;
+    // Pencere açıksa bildirim onun altında kalır (modal üst katmanda);
+    // kapatmazsak sahibi mesajı hiç görmez.
+    if (dom.d.open) dom.d.close();
+    if (dom.onay.open) dom.onay.close();
   }
 
   function fiyatOnayla(u) {
@@ -458,9 +484,8 @@
       yeniOnaylananlar.delete(u.id);
       sayaclariCiz();
       satiriDegistir(eskiHal);
-      if (e.tur !== 'oturum') {
-        bildirimGoster(u.ad, e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.');
-      }
+      if (e.tur === 'oturum') oturumBildirimi(u.ad);
+      else bildirimGoster(u.ad, e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.');
     }).finally(() => { onayGidiyor.delete(u.id); });
   }
 
@@ -487,7 +512,10 @@
       }
       return { basarili: true, uyariVar };
     } catch (e) {
-      if (e.tur === 'oturum') return { basarili: false };   // yönlendirme yapıldı
+      if (e.tur === 'oturum') {
+        oturumBildirimi(acikUrun?.ad);      // pencereyi kapatıp bildirimi gösteriyor
+        return { basarili: false };
+      }
       if (e.tur === 'ag' || e.tur === 'limit') { hatalariGoster(e.mesaj); return { basarili: false }; }
       if (e.durum === 400 && e.veri) {
         hatalariGoster(e.veri.hatalar ?? e.veri.hata ?? 'Geçersiz değer');
@@ -584,11 +612,33 @@
     if (d) duzenleAc(d.dataset.id);
   });
 
-  dom.listeHataKapat.addEventListener('click', () => { dom.listeHata.hidden = true; });
+  dom.listeHataKapat.addEventListener('click', () => {
+    dom.listeHata.hidden = true;
+    basarisizlar.clear();
+    oturumKurbanlari.clear();
+    dom.listeHataGiris.hidden = true;
+  });
+  dom.listeHataGiris.addEventListener('click', girise);
 
-  dom.dKapat.addEventListener('click', () => dom.d.close());
-  dom.d.addEventListener('cancel', (e) => { e.preventDefault(); dom.d.close(); });
-  dom.d.addEventListener('click', (e) => { if (e.target === dom.d) dom.d.close(); });
+  /* Kapatırken kaydedilmemiş değişiklik varsa sor. Ölçüt degisiklikCikar():
+     alana dokunulup eski değere geri dönülmüşse değişiklik YOK sayılır,
+     boşuna soru çıkmaz. */
+  let kapatmaSoruluyor = false;
+
+  async function pencereKapat() {
+    if (kapatmaSoruluyor) return;
+    if (!Object.keys(degisiklikCikar()).length) { dom.d.close(); return; }
+    kapatmaSoruluyor = true;
+    try {
+      if (await sor('Kaydedilmemiş değişiklik var. Çıkılsın mı?', 'Çık')) dom.d.close();
+    } finally {
+      kapatmaSoruluyor = false;
+    }
+  }
+
+  dom.dKapat.addEventListener('click', pencereKapat);
+  dom.d.addEventListener('cancel', (e) => { e.preventDefault(); pencereKapat(); });
+  dom.d.addEventListener('click', (e) => { if (e.target === dom.d) pencereKapat(); });
 
   /* ---------------- süzgeç olayları ---------------- */
 
@@ -646,9 +696,10 @@
     let durumVeri;
     try {
       durumVeri = await iste('/api/yonetici/durum');
-    } catch (e) {
-      if (e.tur === 'oturum') return;      // girise() çağrıldı
-      return girise();                      // durum okunamıyorsa güvenli taraf
+    } catch {
+      // Açılışta oturum yoksa doğrudan girişe: henüz yapılmış, kaybolacak
+      // bir iş yok. Bildirimle oyalamanın anlamı olmaz.
+      return girise();
     }
     if (durumVeri.sifreDegistirmeli) return girise();
 
@@ -657,7 +708,7 @@
     try {
       await veriYukle();
     } catch (e) {
-      if (e.tur === 'oturum') return;
+      if (e.tur === 'oturum') return girise();
       dom.liste.innerHTML =
         `<li class="liste-bos">Ürünler yüklenemedi. ${kacar(e.mesaj ?? 'Sayfayı yenileyin.')}</li>`;
     }

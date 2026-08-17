@@ -47,7 +47,7 @@
 
     <!-- İlerleme -->
     <div class="ilerleme" id="ilerleme">
-      <p class="ilerleme-yazi" id="ilerleme-yazi"></p>
+      <p class="ilerleme-yazi" id="ilerleme-yazi" aria-live="polite" aria-atomic="true"></p>
       <div class="ilerleme-cubuk"><span id="ilerleme-dolu"></span></div>
     </div>
 
@@ -85,8 +85,14 @@
 
 <!-- Hızlı onay başarısız olursa. Ekrana sabit: sahibi listenin neresinde
      olursa olsun görür. Kendiliğinden kaybolmuyor — kapatana kadar durur. -->
-<div class="bildirim" id="liste-hata" role="alert" hidden>
-  <p id="liste-hata-metin"></p>
+<div class="bildirim" id="liste-hata" role="alert" aria-live="assertive" aria-atomic="true" hidden>
+  <div class="bildirim-govde">
+    <p id="liste-hata-metin"></p>
+    <!-- Oturum bitince: yönlendirmeyi sahibi tetikler, otomatik sayaç yok -->
+    <button class="dugme dugme-dolu bildirim-giris" id="liste-hata-giris" type="button" hidden>
+      Giriş ekranına git
+    </button>
+  </div>
   <button class="bildirim-kapat" id="liste-hata-kapat" type="button" aria-label="Bildirimi kapat">✕</button>
 </div>
 
