@@ -32,7 +32,8 @@
     sKontrolsuz: el('s-kontrolsuz'), sOlcusuz: el('s-olcusuz'),
     sayiKontrolsuz: el('sayi-kontrolsuz'), sayiOlcusuz: el('sayi-olcusuz'),
     listeOzet: el('liste-ozet'), liste: el('urun-liste'), listeBos: el('liste-bos'),
-    listeHata: el('liste-hata'),
+    listeHata: el('liste-hata'), listeHataMetin: el('liste-hata-metin'),
+    listeHataKapat: el('liste-hata-kapat'),
 
     d: el('duzenle'), dGorsel: el('d-gorsel'), dReyon: el('d-reyon'), dAd: el('d-ad'),
     dKapat: el('d-kapat'), dHata: el('d-hata'),
@@ -51,6 +52,9 @@
   let REYONLAR = [];
   let acikUrun = null;         // düzenlenen ürün
   let oncekiHal = null;        // "Geri al" için, istemcide tutuluyor
+  // Bu çizimde onaylananlar: satırları yerinde ama soluk duruyor.
+  // Liste yeniden hesaplanınca (süzgeç/arama/reyon) boşalıyor.
+  const yeniOnaylananlar = new Set();
 
   const durum = { arama: '', reyon: 'hepsi', kontrolsuz: false, olcusuz: false };
 
@@ -96,23 +100,6 @@
     return r.join('');
   }
 
-  /* Türkçe iyelik eki: "12'sinin", "3'ünün", "470'inin".
-     Sayı okunuşunun son parçasına bakılıyor. */
-  function iyelikEki(n) {
-    const EK = {
-      0: 'ının', 1: 'inin', 2: 'sinin', 3: 'ünün', 4: 'ünün', 5: 'inin',
-      6: 'sının', 7: 'sinin', 8: 'inin', 9: 'unun',
-      10: 'unun', 20: 'sinin', 30: 'unun', 40: 'ının', 50: 'sinin',
-      60: 'ının', 70: 'inin', 80: 'inin', 90: 'ının',
-      100: 'ünün', 1000: 'inin',
-    };
-    if (n === 0) return EK[0];
-    if (n % 10) return EK[n % 10];
-    if (n % 100) return EK[n % 100];
-    if (n % 1000) return EK[100];
-    return EK[1000];
-  }
-
   /* ---------------- süzme ---------------- */
 
   function suz() {
@@ -129,16 +116,29 @@
 
   function satirHtml(u) {
     const eski = u.eskiFiyat ? `<span class="satir-eski">${para(u.eskiFiyat)}</span>` : '';
+    const yeni = yeniOnaylananlar.has(u.id);
+
     // Hızlı onay: sahibi pencereyi hiç açmadan sıra sıra ilerleyebilsin.
     // İşin büyük kısmı bu akış olacak.
-    const onay = onaylanmis(u) ? '' : `
+    let onay = '';
+    if (yeni) {
+      // Az önce onaylandı: satır yerinde duruyor, düğme ✓ işaretli ve pasif.
+      onay = `
+        <button class="satir-onay satir-onay-bitti" type="button" disabled
+                aria-label="${kacar(u.ad)} fiyatı onaylandı">
+          <span class="satir-onay-isaret" aria-hidden="true">✓</span>
+          <span class="satir-onay-yazi" aria-hidden="true">onaylı</span>
+        </button>`;
+    } else if (!onaylanmis(u)) {
+      onay = `
         <button class="satir-onay" type="button" data-onay="${kacar(u.id)}"
                 title="Fiyat doğru" aria-label="${kacar(u.ad)} fiyatı doğru">
           <span class="satir-onay-isaret" aria-hidden="true">✓</span>
           <span class="satir-onay-yazi" aria-hidden="true">doğru</span>
         </button>`;
+    }
     return `
-      <li class="satir">
+      <li class="satir${yeni ? ' satir-soluk' : ''}">
         <button class="urun-satir" type="button" data-id="${kacar(u.id)}">
           <img class="satir-gorsel" src="${kacar(u.gorsel ?? '')}" alt=""
                loading="lazy" decoding="async" width="52" height="52">
@@ -151,9 +151,15 @@
       </li>`;
   }
 
-  // Sayfalama yok: 470 satırın çizimi ölçüldü, 14 ms. Görseller lazy,
+  // Sayfalama yok: 470 satırın çizimi ölçüldü, 45 ms. Görseller lazy,
   // ekrana girmeyen inmiyor. "Daha göster" düğmesi kazançsız bir engeldi.
+  //
+  // Liste YALNIZCA burada baştan çiziliyor: açılışta ve süzgeç/arama/reyon
+  // değişince. Onaylama listeyi yeniden çizmiyor — çizseydi süzgeç açıkken
+  // onaylanan satır anında düşer, sıradaki yukarı kayar ve hızlı dokunan
+  // biri yanlış ürünü onaylardı.
   function listeCiz() {
+    yeniOnaylananlar.clear();     // liste yeniden hesaplanıyor, işaretler sıfırlanır
     const liste = suz();
 
     dom.liste.innerHTML = liste.map(satirHtml).join('');
@@ -175,7 +181,7 @@
 
     dom.ilerlemeYazi.innerHTML =
       `<strong>${URUNLER.length}</strong> üründen ` +
-      `<strong>${onayli}</strong>&#39;${iyelikEki(onayli)} fiyatı onaylandı`;
+      `<strong>${onayli}</strong> tanesinin fiyatı onaylandı`;
     const yuzde = URUNLER.length ? (onayli / URUNLER.length) * 100 : 0;
     dom.ilerlemeDolu.style.width = yuzde + '%';
   }
@@ -349,19 +355,21 @@
 
   function urunuTazele(yeni) {
     const i = URUNLER.findIndex((u) => u.id === yeni.id);
+    const oncekiOnayli = i !== -1 ? onaylanmis(URUNLER[i]) : true;
     if (i !== -1) {
       yeni._ara = URUNLER[i]._ara;
       URUNLER[i] = yeni;
     }
     if (acikUrun && acikUrun.id === yeni.id) acikUrun = yeni;
+    if (!oncekiOnayli && onaylanmis(yeni)) yeniOnaylananlar.add(yeni.id);
+
     sayaclariCiz();
 
-    // Süzgeç açıksa ürün listeden düşmeli — tam çizim. Değilse yalnızca
-    // o satırı değiştiriyoruz: 470 satır yeniden çizilince altındaki
-    // satırlar oynar, sahibi sıradakine yanlış dokunabilir.
+    // Yalnızca o satır değişiyor — süzgeç açık olsa bile liste baştan
+    // çizilmiyor, satırlar yerinden oynamıyor. Süzgeçten düşme, liste bir
+    // sonraki hesaplamada (süzgeç/arama/reyon değişince) oluyor.
     const satir = dom.liste.querySelector(`[data-id="${CSS.escape(yeni.id)}"]`)?.closest('.satir');
-    if (durum.kontrolsuz || !satir) listeCiz();
-    else satir.outerHTML = satirHtml(yeni);
+    if (satir) satir.outerHTML = satirHtml(yeni);
   }
 
   /** Listedeki hızlı onay: pencere açılmadan, fiyat değişmeden. */
@@ -379,8 +387,8 @@
       return true;
     } catch (e) {
       if (e.tur === 'oturum') return false;
-      dom.listeHata.textContent =
-        e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.';
+      dom.listeHataMetin.textContent =
+        `${u.ad}: ` + (e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.');
       dom.listeHata.hidden = false;
       return false;
     }
@@ -487,6 +495,8 @@
     const d = e.target.closest('[data-id]');
     if (d) duzenleAc(d.dataset.id);
   });
+
+  dom.listeHataKapat.addEventListener('click', () => { dom.listeHata.hidden = true; });
 
   dom.dKapat.addEventListener('click', () => dom.d.close());
   dom.d.addEventListener('cancel', (e) => { e.preventDefault(); dom.d.close(); });

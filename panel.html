@@ -77,13 +77,17 @@
 
     <p class="liste-ozet" id="liste-ozet" aria-live="polite" aria-atomic="true"></p>
 
-    <!-- Listeden hızlı onay başarısız olursa: sessiz geçmesin -->
-    <p class="liste-hata" id="liste-hata" role="alert" hidden></p>
-
     <ul class="urun-liste" id="urun-liste"></ul>
 
     <p class="liste-bos" id="liste-bos" hidden>Bu süzgeçlerle eşleşen ürün yok.</p>
   </main>
+</div>
+
+<!-- Hızlı onay başarısız olursa. Ekrana sabit: sahibi listenin neresinde
+     olursa olsun görür. Kendiliğinden kaybolmuyor — kapatana kadar durur. -->
+<div class="bildirim" id="liste-hata" role="alert" hidden>
+  <p id="liste-hata-metin"></p>
+  <button class="bildirim-kapat" id="liste-hata-kapat" type="button" aria-label="Bildirimi kapat">✕</button>
 </div>
 
 <!-- ---------- Düzenleme ---------- -->

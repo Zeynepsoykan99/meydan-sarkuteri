@@ -108,13 +108,29 @@
 
 .liste-ozet { margin-bottom: 12px; font-size: 14px; color: var(--murekkep-soluk); }
 
-/* Listeden hızlı onay başarısız olursa — sessiz geçmemesi şart */
-.liste-hata {
-  margin-bottom: 12px; padding: 12px 14px;
-  background: var(--kirmizi-sis); border: 1.5px solid var(--kirmizi);
-  border-radius: var(--r);
-  font-size: 14.5px; font-weight: 600; color: var(--kirmizi-koyu);
+/* Hızlı onay hatası — ekranın altına sabit. Sahibi 470 satırın
+   neresinde olursa olsun görüyor; kendiliğinden kaybolmuyor. */
+.bildirim {
+  position: fixed; z-index: 60;
+  left: 12px; right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: flex-start; gap: 10px;
+  max-width: 560px; margin-inline: auto;
+  padding: 14px 12px 14px 16px;
+  background: var(--kirmizi-sis);
+  border: 2px solid var(--kirmizi); border-radius: var(--r);
+  box-shadow: 0 10px 30px rgba(27, 25, 23, .25);
+  font-size: 14.5px; font-weight: 600; line-height: 1.45;
+  color: var(--kirmizi-koyu);
 }
+.bildirim p { flex: 1; min-width: 0; }
+.bildirim-kapat {
+  flex: 0 0 auto;
+  width: 44px; height: 44px; margin: -10px -8px -10px 0;
+  border: 0; border-radius: 50%; background: transparent;
+  font-size: 15px; color: var(--kirmizi-koyu);
+}
+.bildirim-kapat:hover { background: rgba(214, 32, 42, .12); }
 
 /* ---------- Ürün listesi ---------- */
 .urun-liste { display: grid; gap: 8px; }
@@ -139,6 +155,14 @@
 .satir-onay:disabled { opacity: .5; cursor: progress; }
 .satir-onay-isaret { font-size: 19px; line-height: 1; }
 .satir-onay-yazi { font-size: 10.5px; font-weight: 700; }
+
+/* Az önce onaylandı: satır soluk ama işaret okunur kalıyor, yoksa
+   sahibi hangi satırı bitirdiğini göremez. */
+.satir-soluk > .urun-satir { opacity: .45; }
+.satir-onay-bitti:disabled {
+  opacity: 1; cursor: default;
+  border-color: #1C6B36; background: #E4F5E9; color: #1C6B36;
+}
 
 .urun-satir {
   display: grid;
@@ -166,10 +190,12 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* min-height: onay sonrası rozet kalkınca satır kısalmasın. Kısalsaydı
-   altındaki satırlar yukarı kayar, sahibi sıradakine yanlış dokunurdu. */
+   altındaki satırlar yukarı kayar, sahibi sıradakine yanlış dokunurdu.
+   Değer rozetin gerçek yüksekliği: 11.5px yazı + 2x3px iç boşluk,
+   ölçülerek doğrulandı. 21px'te satırlar 3px oynuyordu. */
 .satir-rozetler {
   display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;
-  min-height: 21px;
+  min-height: 24px;
 }
 .rozet {
   padding: 3px 8px; border-radius: 999px;
