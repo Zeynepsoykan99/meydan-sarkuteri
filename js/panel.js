@@ -6,17 +6,19 @@
      - kaydettikten sonra listede AYNI YERDE kalınıyor (sırayla ilerliyor)
      - virgüllü giriş kabul ediliyor (Türkçe klavye)
      - "kaydettim sandım ama kaydolmadı" durumu asla sessiz geçmiyor
-     - aykırı fiyat uyarısı tek dokunuşla geri alınabiliyor
+     - fiyatı 10 kat aşan değişiklik KAYDEDİLMEDEN önce soruluyor
+     - fiyatı doğru olan ürün, değiştirilmeden onaylanabiliyor
 
-   Ürün ekleme/silme yok; yalnızca fiyat, eski fiyat, stok, ölçü.
+   Ürün ekleme/silme yok; yalnızca fiyat, indirim, stok, ölçü.
    ===================================================================== */
 
 (function () {
   'use strict';
 
   const GIRIS = 'giris.html';
-  const SAYFA_BOYU = 60;          // ilk render; gerisi "daha göster"
   const YEDEK_ESKI_GUN = 7;
+  const SICRAMA = 10;             // bu katın üstü/altı değişiklik sorulur
+  const SERIT_ANAHTAR = 'yedek-serit-kapatildi';
 
   const { sadelestir, kacar, para, sayiyaCevir } = window.Ortak;
   const el = (id) => document.getElementById(id);
@@ -29,22 +31,26 @@
     arama: el('p-arama'), aramaSil: el('p-arama-sil'), reyon: el('p-reyon'),
     sKontrolsuz: el('s-kontrolsuz'), sOlcusuz: el('s-olcusuz'),
     sayiKontrolsuz: el('sayi-kontrolsuz'), sayiOlcusuz: el('sayi-olcusuz'),
-    listeOzet: el('liste-ozet'), liste: el('urun-liste'),
-    listeDaha: el('liste-daha'), dahaGoster: el('daha-goster'), listeBos: el('liste-bos'),
+    listeOzet: el('liste-ozet'), liste: el('urun-liste'), listeBos: el('liste-bos'),
+    listeHata: el('liste-hata'),
 
     d: el('duzenle'), dGorsel: el('d-gorsel'), dReyon: el('d-reyon'), dAd: el('d-ad'),
     dKapat: el('d-kapat'), dHata: el('d-hata'),
     dUyari: el('d-uyari'), dUyariMetin: el('d-uyari-metin'), dGeriAl: el('d-geri-al'),
     dFiyat: el('d-fiyat'), dEski: el('d-eski'),
+    dIndirimli: el('d-indirimli'), dIndirimAlan: el('d-indirim-alan'),
     dStokVar: el('d-stok-var'), dStokYok: el('d-stok-yok'),
-    dMiktar: el('d-miktar'), dBirim: el('d-birim'), dKaydet: el('d-kaydet'),
+    dMiktar: el('d-miktar'), dBirim: el('d-birim'),
+    dKaydet: el('d-kaydet'), dOnay: el('d-onay'),
+
+    onay: el('onay'), onayMetin: el('onay-metin'),
+    onayEvet: el('onay-evet'), onayHayir: el('onay-hayir'),
   };
 
   let URUNLER = [];
   let REYONLAR = [];
   let acikUrun = null;         // düzenlenen ürün
   let oncekiHal = null;        // "Geri al" için, istemcide tutuluyor
-  let gosterilen = SAYFA_BOYU;
 
   const durum = { arama: '', reyon: 'hepsi', kontrolsuz: false, olcusuz: false };
 
@@ -77,16 +83,34 @@
 
   /* ---------------- ürün durumu ---------------- */
 
-  const kontrolEdilmis = (u) => u.kaynak === 'dukkan';
+  const onaylanmis = (u) => u.kaynak === 'dukkan';
   const olcusuzMu = (u) => u.miktar === null || u.miktar === undefined;
 
   function rozetler(u) {
+    // Onaylanmış üründe rozet yok: 470 satırlık listede her satıra rozet
+    // koymak gürültü. Rozet yalnızca "burada yapacak iş var" demek.
     const r = [];
     if (u.stokta === false) r.push('<span class="rozet rozet-yok">Şu an yok</span>');
-    if (!kontrolEdilmis(u)) r.push('<span class="rozet rozet-kontrolsuz">Fiyat kontrol edilmedi</span>');
-    else r.push('<span class="rozet rozet-dukkan">Fiyat sizin</span>');
+    if (!onaylanmis(u)) r.push('<span class="rozet rozet-kontrolsuz">Fiyat onaylanmadı</span>');
     if (olcusuzMu(u)) r.push('<span class="rozet rozet-olcusuz">Ölçü eksik</span>');
     return r.join('');
+  }
+
+  /* Türkçe iyelik eki: "12'sinin", "3'ünün", "470'inin".
+     Sayı okunuşunun son parçasına bakılıyor. */
+  function iyelikEki(n) {
+    const EK = {
+      0: 'ının', 1: 'inin', 2: 'sinin', 3: 'ünün', 4: 'ünün', 5: 'inin',
+      6: 'sının', 7: 'sinin', 8: 'inin', 9: 'unun',
+      10: 'unun', 20: 'sinin', 30: 'unun', 40: 'ının', 50: 'sinin',
+      60: 'ının', 70: 'inin', 80: 'inin', 90: 'ının',
+      100: 'ünün', 1000: 'inin',
+    };
+    if (n === 0) return EK[0];
+    if (n % 10) return EK[n % 10];
+    if (n % 100) return EK[n % 100];
+    if (n % 1000) return EK[100];
+    return EK[1000];
   }
 
   /* ---------------- süzme ---------------- */
@@ -95,7 +119,7 @@
     const kelimeler = sadelestir(durum.arama).split(/\s+/).filter(Boolean);
     return URUNLER.filter((u) => {
       if (durum.reyon !== 'hepsi' && u.reyon !== durum.reyon) return false;
-      if (durum.kontrolsuz && kontrolEdilmis(u)) return false;
+      if (durum.kontrolsuz && onaylanmis(u)) return false;
       if (durum.olcusuz && !olcusuzMu(u)) return false;
       return kelimeler.every((k) => u._ara.includes(k));
     });
@@ -105,8 +129,16 @@
 
   function satirHtml(u) {
     const eski = u.eskiFiyat ? `<span class="satir-eski">${para(u.eskiFiyat)}</span>` : '';
+    // Hızlı onay: sahibi pencereyi hiç açmadan sıra sıra ilerleyebilsin.
+    // İşin büyük kısmı bu akış olacak.
+    const onay = onaylanmis(u) ? '' : `
+        <button class="satir-onay" type="button" data-onay="${kacar(u.id)}"
+                title="Fiyat doğru" aria-label="${kacar(u.ad)} fiyatı doğru">
+          <span class="satir-onay-isaret" aria-hidden="true">✓</span>
+          <span class="satir-onay-yazi" aria-hidden="true">doğru</span>
+        </button>`;
     return `
-      <li>
+      <li class="satir">
         <button class="urun-satir" type="button" data-id="${kacar(u.id)}">
           <img class="satir-gorsel" src="${kacar(u.gorsel ?? '')}" alt=""
                loading="lazy" decoding="async" width="52" height="52">
@@ -115,38 +147,36 @@
             <span class="satir-rozetler">${rozetler(u)}</span>
           </span>
           <span class="satir-fiyat">${para(u.fiyat)}${eski}</span>
-        </button>
+        </button>${onay}
       </li>`;
   }
 
+  // Sayfalama yok: 470 satırın çizimi ölçüldü, 14 ms. Görseller lazy,
+  // ekrana girmeyen inmiyor. "Daha göster" düğmesi kazançsız bir engeldi.
   function listeCiz() {
     const liste = suz();
-    const parca = liste.slice(0, gosterilen);
 
-    dom.liste.innerHTML = parca.map(satirHtml).join('');
+    dom.liste.innerHTML = liste.map(satirHtml).join('');
     dom.liste.hidden = liste.length === 0;
     dom.listeBos.hidden = liste.length !== 0;
 
     dom.listeOzet.textContent = liste.length === URUNLER.length
       ? `${liste.length} ürün`
       : `${liste.length} ürün (${URUNLER.length} içinden)`;
-
-    const kalan = liste.length - parca.length;
-    dom.listeDaha.hidden = kalan <= 0;
-    if (kalan > 0) dom.dahaGoster.textContent = `${kalan} ürün daha göster`;
   }
 
   function sayaclariCiz() {
-    const kontrolsuz = URUNLER.filter((u) => !kontrolEdilmis(u)).length;
+    const bekleyen = URUNLER.filter((u) => !onaylanmis(u)).length;
     const olcusuz = URUNLER.filter(olcusuzMu).length;
-    const kontrollu = URUNLER.length - kontrolsuz;
+    const onayli = URUNLER.length - bekleyen;
 
-    dom.sayiKontrolsuz.textContent = kontrolsuz;
+    dom.sayiKontrolsuz.textContent = bekleyen;
     dom.sayiOlcusuz.textContent = olcusuz;
 
     dom.ilerlemeYazi.innerHTML =
-      `<strong>${URUNLER.length}</strong> üründen <strong>${kontrollu}</strong> tanesinin fiyatı kontrol edildi`;
-    const yuzde = URUNLER.length ? (kontrollu / URUNLER.length) * 100 : 0;
+      `<strong>${URUNLER.length}</strong> üründen ` +
+      `<strong>${onayli}</strong>&#39;${iyelikEki(onayli)} fiyatı onaylandı`;
+    const yuzde = URUNLER.length ? (onayli / URUNLER.length) * 100 : 0;
     dom.ilerlemeDolu.style.width = yuzde + '%';
   }
 
@@ -154,8 +184,15 @@
      Sahibi bu konuda bir şey yapamaz (yedek alma terminal işi), o yüzden
      düğme yok — yalnızca bilgi, ve kapatılabilir. */
 
+  // Kapatma oturum boyu hatırlanıyor: sayfa yenilenince geri gelmiyor,
+  // tarayıcı kapanınca sıfırlanıyor.
+  const seritKapatildi = () => {
+    try { return sessionStorage.getItem(SERIT_ANAHTAR) === '1'; } catch { return false; }
+  };
+
   function yedekSeridiCiz(yedekDamgasi, dbDamgasi) {
     if (!yedekDamgasi || !dbDamgasi) return;            // bilinmiyorsa gösterme
+    if (seritKapatildi()) return;
     const y = new Date(yedekDamgasi), d = new Date(dbDamgasi);
     if (isNaN(y) || isNaN(d)) return;
 
@@ -167,7 +204,51 @@
     dom.yedekSerit.hidden = false;
   }
 
-  dom.yedekKapat.addEventListener('click', () => { dom.yedekSerit.hidden = true; });
+  dom.yedekKapat.addEventListener('click', () => {
+    dom.yedekSerit.hidden = true;
+    try { sessionStorage.setItem(SERIT_ANAHTAR, '1'); } catch { /* özel mod */ }
+  });
+
+  /* ---------------- onay sorusu ----------------
+     Büyük fiyat değişikliği KAYDEDİLMEDEN önce soruluyor. Sunucudaki
+     uyarı (reyon medyanı gibi istemcinin bilmediği sinyaller) yerinde
+     duruyor — iki katman birlikte çalışıyor. */
+
+  function sor(mesaj) {
+    dom.onayMetin.innerHTML = mesaj;
+    dom.onay.showModal();
+    return new Promise((cevapla) => {
+      const bitir = (karar) => {
+        dom.onayEvet.removeEventListener('click', evet);
+        dom.onayHayir.removeEventListener('click', hayir);
+        dom.onay.removeEventListener('cancel', vazgec);
+        if (dom.onay.open) dom.onay.close();
+        cevapla(karar);
+      };
+      const evet = () => bitir(true);
+      const hayir = () => bitir(false);
+      const vazgec = (e) => { e.preventDefault(); bitir(false); };
+      dom.onayEvet.addEventListener('click', evet);
+      dom.onayHayir.addEventListener('click', hayir);
+      dom.onay.addEventListener('cancel', vazgec);
+    });
+  }
+
+  /** Fiyat SICRAMA katından fazla değiştiyse sor; değilse doğrudan geç. */
+  async function sicramaOnayi(yeniFiyat) {
+    const eski = acikUrun?.fiyat;
+    if (typeof yeniFiyat !== 'number' || typeof eski !== 'number' || eski <= 0) return true;
+    const oran = yeniFiyat / eski;
+    if (oran <= SICRAMA && oran >= 1 / SICRAMA) return true;
+
+    const artis = oran > 1;
+    const kat = artis ? oran : 1 / oran;
+    const katYazi = kat >= 10 ? Math.round(kat) : kat.toFixed(1).replace('.', ',');
+    return sor(
+      `Bu ürünün fiyatını <strong>${katYazi} kat ${artis ? 'artırıyorsunuz' : 'düşürüyorsunuz'}</strong>.` +
+      `<span class="onay-fiyatlar">${kacar(para(eski))} <b>&rarr;</b> ${kacar(para(yeniFiyat))}</span>` +
+      'Doğru mu?');
+  }
 
   /* ---------------- düzenleme ---------------- */
 
@@ -179,26 +260,31 @@
     dom.dReyon.textContent = (REYONLAR.find((r) => r.id === u.reyon) ?? {}).ad ?? '';
     dom.dAd.textContent = u.ad;
     dom.dFiyat.value = sayiYaz(u.fiyat);
+    dom.dIndirimli.checked = u.eskiFiyat !== null && u.eskiFiyat !== undefined;
     dom.dEski.value = sayiYaz(u.eskiFiyat);
+    indirimAlaniCiz();
     dom.dStokVar.checked = u.stokta !== false;
     dom.dStokYok.checked = u.stokta === false;
     dom.dMiktar.value = sayiYaz(u.miktar);
     dom.dBirim.value = u.birim ?? '';
+    // "Fiyat doğru" yalnızca henüz onaylanmamış üründe anlamlı
+    dom.dOnay.hidden = onaylanmis(u);
     hatalariTemizle();
     dom.dUyari.hidden = true;
     degisiklikKontrol();
   }
 
+  const indirimAlaniCiz = () => { dom.dIndirimAlan.hidden = !dom.dIndirimli.checked; };
+
   /** Formdaki değerler — sunucuya gidecek biçimde (nokta ile). */
   function formOku() {
-    const miktar = sayiyaCevir(dom.dMiktar.value);
-    const birim = dom.dBirim.value || null;
     return {
       fiyat: sayiyaCevir(dom.dFiyat.value),
-      eskiFiyat: sayiyaCevir(dom.dEski.value),
+      // Anahtar kapalıysa indirim kalkıyor: sunucuya açıkça null gidiyor.
+      eskiFiyat: dom.dIndirimli.checked ? sayiyaCevir(dom.dEski.value) : null,
       stokta: dom.dStokVar.checked,
-      miktar,
-      birim,
+      miktar: sayiyaCevir(dom.dMiktar.value),
+      birim: dom.dBirim.value || null,
     };
   }
 
@@ -221,12 +307,19 @@
   function degisiklikKontrol() {
     const bozuk = [dom.dFiyat, dom.dEski, dom.dMiktar]
       .some((g) => Number.isNaN(sayiyaCevir(g.value)));
-    dom.dKaydet.disabled = bozuk || Object.keys(degisiklikCikar()).length === 0;
+    // Anahtar açıksa önceki fiyat boş bırakılamaz
+    const eksikIndirim = dom.dIndirimli.checked && sayiyaCevir(dom.dEski.value) === null;
+    dom.dKaydet.disabled = bozuk || eksikIndirim || Object.keys(degisiklikCikar()).length === 0;
   }
 
   ['input', 'change'].forEach((olay) => {
     [dom.dFiyat, dom.dEski, dom.dMiktar, dom.dBirim, dom.dStokVar, dom.dStokYok]
       .forEach((g) => g.addEventListener(olay, degisiklikKontrol));
+  });
+  dom.dIndirimli.addEventListener('change', () => {
+    indirimAlaniCiz();
+    if (dom.dIndirimli.checked) dom.dEski.focus();
+    degisiklikKontrol();
   });
 
   function hatalariTemizle() {
@@ -260,9 +353,37 @@
       yeni._ara = URUNLER[i]._ara;
       URUNLER[i] = yeni;
     }
-    acikUrun = yeni;
+    if (acikUrun && acikUrun.id === yeni.id) acikUrun = yeni;
     sayaclariCiz();
-    listeCiz();       // gosterilen değişmediği için aynı konumda kalıyor
+
+    // Süzgeç açıksa ürün listeden düşmeli — tam çizim. Değilse yalnızca
+    // o satırı değiştiriyoruz: 470 satır yeniden çizilince altındaki
+    // satırlar oynar, sahibi sıradakine yanlış dokunabilir.
+    const satir = dom.liste.querySelector(`[data-id="${CSS.escape(yeni.id)}"]`)?.closest('.satir');
+    if (durum.kontrolsuz || !satir) listeCiz();
+    else satir.outerHTML = satirHtml(yeni);
+  }
+
+  /** Listedeki hızlı onay: pencere açılmadan, fiyat değişmeden. */
+  async function fiyatOnayla(u) {
+    dom.listeHata.hidden = true;
+    try {
+      // Fiyat gönderiliyor ama aynı değer: sunucu kaynak'ı 'dukkan' yapar,
+      // değer değişmediği için fiyat_gecmisi'ne kayıt düşmez.
+      const sonuc = await iste('/api/yonetici/urun', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: u.id, fiyat: u.fiyat }),
+      });
+      urunuTazele(sonuc.urun);
+      return true;
+    } catch (e) {
+      if (e.tur === 'oturum') return false;
+      dom.listeHata.textContent =
+        e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.';
+      dom.listeHata.hidden = false;
+      return false;
+    }
   }
 
   async function kaydet(yama, { uyariGoster = true } = {}) {
@@ -305,12 +426,29 @@
     const yama = degisiklikCikar();
     if (!Object.keys(yama).length) return;
 
+    // Sıçrama varsa KAYDETMEDEN önce sor. Sunucunun uyarısı kaydettikten
+    // sonra geliyor; sahibi onu görmeden geçebilir, bu katman erken durduruyor.
+    if (!(await sicramaOnayi(yama.fiyat))) return;
+
     // "Geri al" için önceki hâli istemcide tutuyoruz — sunucuya sormuyoruz
     oncekiHal = {
       fiyat: acikUrun.fiyat, eskiFiyat: acikUrun.eskiFiyat,
       stokta: acikUrun.stokta, miktar: acikUrun.miktar, birim: acikUrun.birim,
     };
     await kaydet(yama);
+  });
+
+  /* "Fiyat doğru": mevcut fiyatı olduğu gibi gönderir. Sunucu fiyat
+     geldiği için kaynak'ı 'dukkan' yapar; değer değişmediğinden
+     fiyat_gecmisi'ne kayıt düşmez. Arka uçta değişiklik gerekmedi. */
+  dom.dOnay.addEventListener('click', async () => {
+    if (!acikUrun) return;
+    dom.dOnay.disabled = true;
+    dom.dOnay.textContent = 'Onaylanıyor…';
+    const basarili = await kaydet({ fiyat: acikUrun.fiyat }, { uyariGoster: false });
+    dom.dOnay.disabled = false;
+    dom.dOnay.textContent = 'Fiyat doğru';
+    if (basarili) dom.d.close();      // pencere kapansın, listede kalınsın
   });
 
   dom.dGeriAl.addEventListener('click', async () => {
@@ -334,7 +472,18 @@
     if (!dom.d.open) dom.d.showModal();
   }
 
-  dom.liste.addEventListener('click', (e) => {
+  dom.liste.addEventListener('click', async (e) => {
+    // Hızlı onay önce bakılıyor: satırın içinde ama pencereyi açmamalı
+    const onay = e.target.closest('[data-onay]');
+    if (onay) {
+      const u = URUNLER.find((x) => x.id === onay.dataset.onay);
+      if (!u || onay.disabled) return;
+      onay.disabled = true;   // :disabled zaten soluklaştırıyor
+      // Başarılıysa satır yeniden çizildiği için düğme zaten kayboluyor;
+      // başarısızsa geri açılmalı, yoksa tekrar denenemez.
+      if (!(await fiyatOnayla(u))) onay.disabled = false;
+      return;
+    }
     const d = e.target.closest('[data-id]');
     if (d) duzenleAc(d.dataset.id);
   });
@@ -348,29 +497,25 @@
   dom.arama.addEventListener('input', () => {
     durum.arama = dom.arama.value.trim();
     dom.aramaSil.hidden = durum.arama === '';
-    gosterilen = SAYFA_BOYU;
     listeCiz();
   });
   dom.aramaSil.addEventListener('click', () => {
     dom.arama.value = ''; durum.arama = ''; dom.aramaSil.hidden = true;
-    gosterilen = SAYFA_BOYU; listeCiz(); dom.arama.focus();
+    listeCiz(); dom.arama.focus();
   });
   dom.reyon.addEventListener('change', () => {
-    durum.reyon = dom.reyon.value; gosterilen = SAYFA_BOYU; listeCiz();
+    durum.reyon = dom.reyon.value; listeCiz();
   });
   dom.sKontrolsuz.addEventListener('click', () => {
     durum.kontrolsuz = !durum.kontrolsuz;
     dom.sKontrolsuz.setAttribute('aria-pressed', String(durum.kontrolsuz));
-    gosterilen = SAYFA_BOYU; listeCiz();
+    listeCiz();
   });
   dom.sOlcusuz.addEventListener('click', () => {
     durum.olcusuz = !durum.olcusuz;
     dom.sOlcusuz.setAttribute('aria-pressed', String(durum.olcusuz));
-    gosterilen = SAYFA_BOYU; listeCiz();
+    listeCiz();
   });
-  // Düğme "410 ürün daha göster" yazıyor; yazdığını yapsın — tek dokunuşta hepsi.
-  // 470 satırın çizimi ölçüldü: 4 ms. Görseller lazy, ekrana girmeyen inmiyor.
-  dom.dahaGoster.addEventListener('click', () => { gosterilen = Infinity; listeCiz(); });
 
   dom.cikis.addEventListener('click', async () => {
     dom.cikis.disabled = true;
@@ -395,11 +540,8 @@
 
     yedekSeridiCiz(veri.yedekDamgasi, veri.guncellendi);
 
-    const t0 = performance.now();
     sayaclariCiz();
     listeCiz();
-    // Render süresini ölçüp konsola yazıyoruz: 470 satır telefonda ağır mı?
-    console.info(`panel: ${URUNLER.length} ürün, ilk ${gosterilen} satır ${Math.round(performance.now() - t0)} ms'de çizildi`);
   }
 
   async function kapiKontrol() {

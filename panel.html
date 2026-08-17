@@ -67,7 +67,7 @@
 
       <div class="panel-suzgecler">
         <button class="suzgec-dugme" id="s-kontrolsuz" type="button" aria-pressed="false">
-          Fiyatı kontrol edilmemiş <span class="suzgec-sayi" id="sayi-kontrolsuz"></span>
+          Fiyatı onaylanmamış <span class="suzgec-sayi" id="sayi-kontrolsuz"></span>
         </button>
         <button class="suzgec-dugme" id="s-olcusuz" type="button" aria-pressed="false">
           Ölçüsü eksik <span class="suzgec-sayi" id="sayi-olcusuz"></span>
@@ -77,11 +77,10 @@
 
     <p class="liste-ozet" id="liste-ozet" aria-live="polite" aria-atomic="true"></p>
 
-    <ul class="urun-liste" id="urun-liste"></ul>
+    <!-- Listeden hızlı onay başarısız olursa: sessiz geçmesin -->
+    <p class="liste-hata" id="liste-hata" role="alert" hidden></p>
 
-    <div class="liste-daha" id="liste-daha" hidden>
-      <button class="dugme dugme-hat" id="daha-goster" type="button"></button>
-    </div>
+    <ul class="urun-liste" id="urun-liste"></ul>
 
     <p class="liste-bos" id="liste-bos" hidden>Bu süzgeçlerle eşleşen ürün yok.</p>
   </main>
@@ -113,9 +112,17 @@
       <input class="duzenle-girdi" id="d-fiyat" type="text" inputmode="decimal"
              autocomplete="off" enterkeyhint="done">
 
-      <label class="duzenle-etiket" for="d-eski">Eski fiyat (₺) <span class="duzenle-ipucu">indirim yoksa boş bırakın</span></label>
-      <input class="duzenle-girdi" id="d-eski" type="text" inputmode="decimal"
-             autocomplete="off" enterkeyhint="done">
+      <!-- İndirim: ham "eski fiyat" kutusu yerine anahtar. Kapalıyken alan
+           hiç görünmüyor, kapatıldığında indirim de kalkıyor. -->
+      <label class="indirim-anahtar" for="d-indirimli">
+        <input type="checkbox" id="d-indirimli">
+        <span>Bu ürün indirimli</span>
+      </label>
+
+      <div id="d-indirim-alan" hidden>
+        <label class="duzenle-etiket" for="d-eski">İndirimden önceki fiyat (₺)</label>
+        <input class="duzenle-girdi" id="d-eski" type="text" inputmode="decimal"
+               autocomplete="off" enterkeyhint="done"></div>
 
       <fieldset class="duzenle-stok">
         <legend class="duzenle-etiket">Stok durumu</legend>
@@ -137,9 +144,22 @@
     </div>
 
     <div class="duzenle-dip">
+      <!-- "Fiyat doğru": fiyatı değiştirmeden onaylar. Yalnızca henüz
+           onaylanmamış ürünlerde görünür. -->
+      <button class="dugme dugme-hat duzenle-onay" id="d-onay" type="button">Fiyat doğru</button>
       <button class="dugme dugme-dolu duzenle-kaydet" id="d-kaydet" type="button" disabled>Kaydet</button>
     </div>
   </form>
+</dialog>
+
+<!-- ---------- Büyük fiyat değişikliğinde onay ---------- -->
+<dialog class="onay" id="onay" aria-labelledby="onay-baslik">
+  <h2 class="onay-baslik" id="onay-baslik">Bir dakika</h2>
+  <p class="onay-metin" id="onay-metin"></p>
+  <div class="onay-dugmeler">
+    <button class="dugme dugme-hat" id="onay-hayir" type="button">Vazgeç</button>
+    <button class="dugme dugme-dolu" id="onay-evet" type="button">Evet</button>
+  </div>
 </dialog>
 
 <script src="js/ortak.js"></script>
