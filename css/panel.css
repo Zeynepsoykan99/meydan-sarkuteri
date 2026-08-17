@@ -31,13 +31,16 @@
   align-items: center; gap: 10px;
   padding: 12px 0;
 }
+/* justify-self: end KULLANMA — kutuyu içeriğe göre daraltır, uzun ad
+   ellipsis'e girmeden sütunu taşıp logonun üstüne biner. Kutu sütunu
+   doldurup metin sağa yaslanınca kısalma doğru yerde oluyor. */
 .panel-kim {
-  min-width: 0;
-  justify-self: end; text-align: right;
+  min-width: 0; text-align: right;
   font-size: 14px; font-weight: 700;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .panel-kim span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.panel-baslik .logo { min-width: 0; }
 .panel-cikis { min-height: 44px; padding: 10px 18px; font-size: 15px; }
 
 /* ---------- Yedek tazeliği şeridi ---------- */
