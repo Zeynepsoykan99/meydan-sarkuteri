@@ -92,7 +92,9 @@ verinin yazılmasını en baştan engeller.
 şekildedir, böylece arayüz iki kaynağı ayırt etmek zorunda kalmaz.
 GET dışındaki metodlar 405 döner.
 
-**Ürün/fiyat yazma ucu yoktur.** Katalog uçları yalnızca okur.
+**Katalog uçları yalnızca okur.** Yazma tek bir yerden yapılır:
+`PATCH /api/yonetici/urun`, oturum zorunlu (aşağıda "Panel"). Herkese
+açık uçların hiçbiri veritabanına yazmaz.
 
 ## Yönetici girişi
 
