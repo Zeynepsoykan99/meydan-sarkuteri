@@ -243,7 +243,11 @@
   /** Fiyat SICRAMA katından fazla değiştiyse sor; değilse doğrudan geç. */
   async function sicramaOnayi(yeniFiyat) {
     const eski = acikUrun?.fiyat;
-    if (typeof yeniFiyat !== 'number' || typeof eski !== 'number' || eski <= 0) return true;
+    // yeniFiyat <= 0 geçersiz; oranı hesaplamak "sonsuz kat" gibi saçma bir
+    // soru üretiyordu. Sunucu bunu "fiyat sıfırdan büyük olmalı" diye
+    // reddetsin, araya girme.
+    if (typeof yeniFiyat !== 'number' || yeniFiyat <= 0) return true;
+    if (typeof eski !== 'number' || eski <= 0) return true;
     const oran = yeniFiyat / eski;
     if (oran <= SICRAMA && oran >= 1 / SICRAMA) return true;
 
@@ -310,12 +314,30 @@
     return yama;
   }
 
+  /* Kaydet'in griye dönmesi tek başına yetmiyor: sahibi "₺39,50" ya da
+     "39,50 TL" yazdığında düğmenin neden çalışmadığını göremiyordu.
+     Sorunlu alanı işaretleyip örnekle söylüyoruz. */
+  let istemciHatasi = false;
+
   function degisiklikKontrol() {
-    const bozuk = [dom.dFiyat, dom.dEski, dom.dMiktar]
-      .some((g) => Number.isNaN(sayiyaCevir(g.value)));
+    const alanlar = [[dom.dFiyat, 'Fiyat'], [dom.dEski, 'İndirimden önceki fiyat'], [dom.dMiktar, 'Miktar']];
+    const bozuk = alanlar.filter(([g]) => Number.isNaN(sayiyaCevir(g.value)));
     // Anahtar açıksa önceki fiyat boş bırakılamaz
     const eksikIndirim = dom.dIndirimli.checked && sayiyaCevir(dom.dEski.value) === null;
-    dom.dKaydet.disabled = bozuk || eksikIndirim || Object.keys(degisiklikCikar()).length === 0;
+
+    if (bozuk.length) {
+      bozuk.forEach(([g]) => g.classList.add('alan-hatali'));
+      const adlar = bozuk.map(([, ad]) => ad).join(' ve ');
+      dom.dHata.textContent =
+        `${adlar} yalnızca rakam ve virgül içerebilir. Örnek: 39,50 — lira işareti ya da harf yazmayın.`;
+      dom.dHata.hidden = false;
+      istemciHatasi = true;
+    } else if (istemciHatasi) {
+      hatalariTemizle();
+      istemciHatasi = false;
+    }
+
+    dom.dKaydet.disabled = bozuk.length > 0 || eksikIndirim || Object.keys(degisiklikCikar()).length === 0;
   }
 
   ['input', 'change'].forEach((olay) => {
@@ -329,6 +351,7 @@
   });
 
   function hatalariTemizle() {
+    istemciHatasi = false;
     dom.dHata.hidden = true;
     dom.dHata.innerHTML = '';
     [dom.dFiyat, dom.dEski, dom.dMiktar, dom.dBirim].forEach((g) => g.classList.remove('alan-hatali'));
@@ -353,45 +376,92 @@
     dom.dHata.scrollIntoView({ block: 'nearest' });
   }
 
+  /** Tek satırı değiştirir — liste baştan çizilmez, satırlar oynamaz. */
+  function satiriDegistir(u) {
+    const satir = dom.liste.querySelector(`[data-id="${CSS.escape(u.id)}"]`)?.closest('.satir');
+    if (satir) satir.outerHTML = satirHtml(u);
+  }
+
+  /** URUNLER'deki kaydı değiştirir; _ara alanını korur. */
+  function urunuKoy(yeni) {
+    const i = URUNLER.findIndex((u) => u.id === yeni.id);
+    if (i === -1) return null;
+    yeni._ara = URUNLER[i]._ara;
+    URUNLER[i] = yeni;
+    if (acikUrun && acikUrun.id === yeni.id) acikUrun = yeni;
+    return yeni;
+  }
+
   function urunuTazele(yeni) {
     const i = URUNLER.findIndex((u) => u.id === yeni.id);
     const oncekiOnayli = i !== -1 ? onaylanmis(URUNLER[i]) : true;
-    if (i !== -1) {
-      yeni._ara = URUNLER[i]._ara;
-      URUNLER[i] = yeni;
+    const oncekiOlcusuz = i !== -1 ? olcusuzMu(URUNLER[i]) : false;
+    urunuKoy(yeni);
+
+    // Süzgeçten düşmesi gereken ürün de yerinde kalsın: soluk görünsün,
+    // güncel değerleriyle. Liste bir sonraki hesaplamada (süzgeç/arama/
+    // reyon değişince) düşürür. Yoksa kaydeden sahibi ürünü kaybediyor.
+    if ((!oncekiOnayli && onaylanmis(yeni)) || (oncekiOlcusuz && !olcusuzMu(yeni))) {
+      yeniOnaylananlar.add(yeni.id);
     }
-    if (acikUrun && acikUrun.id === yeni.id) acikUrun = yeni;
-    if (!oncekiOnayli && onaylanmis(yeni)) yeniOnaylananlar.add(yeni.id);
 
     sayaclariCiz();
-
-    // Yalnızca o satır değişiyor — süzgeç açık olsa bile liste baştan
-    // çizilmiyor, satırlar yerinden oynamıyor. Süzgeçten düşme, liste bir
-    // sonraki hesaplamada (süzgeç/arama/reyon değişince) oluyor.
-    const satir = dom.liste.querySelector(`[data-id="${CSS.escape(yeni.id)}"]`)?.closest('.satir');
-    if (satir) satir.outerHTML = satirHtml(yeni);
+    satiriDegistir(yeni);
   }
 
-  /** Listedeki hızlı onay: pencere açılmadan, fiyat değişmeden. */
-  async function fiyatOnayla(u) {
-    dom.listeHata.hidden = true;
-    try {
-      // Fiyat gönderiliyor ama aynı değer: sunucu kaynak'ı 'dukkan' yapar,
-      // değer değişmediği için fiyat_gecmisi'ne kayıt düşmez.
-      const sonuc = await iste('/api/yonetici/urun', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: u.id, fiyat: u.fiyat }),
-      });
-      urunuTazele(sonuc.urun);
-      return true;
-    } catch (e) {
-      if (e.tur === 'oturum') return false;
-      dom.listeHataMetin.textContent =
-        `${u.ad}: ` + (e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.');
-      dom.listeHata.hidden = false;
-      return false;
-    }
+  /* ---------------- hızlı onay ----------------
+     İyimser güncelleme: 470 ürünü tek tek gezerken her dokunuşta sunucu
+     yanıtını beklemek işi kullanılmaz hâle getiriyordu. Satır anında
+     onaylanmış görünüyor, istek arkada gidiyor, başarısız olursa geri
+     alınıyor ve sabit bildirim çıkıyor. */
+
+  const onayGidiyor = new Set();     // aynı ürüne ikinci istek gitmesin
+  const basarisizlar = new Set();    // bildirimde toplu gösterilecek adlar
+
+  function bildirimGoster(ad, mesaj) {
+    basarisizlar.add(ad);
+    const adlar = [...basarisizlar];
+    dom.listeHataMetin.textContent = adlar.length === 1
+      ? `${adlar[0]}: ${mesaj}`
+      : `${adlar.length} ürün onaylanamadı (${adlar.slice(0, 2).join(', ')}…). ${mesaj}`;
+    dom.listeHata.hidden = false;
+  }
+
+  function fiyatOnayla(u) {
+    if (onayGidiyor.has(u.id) || onaylanmis(u)) return;   // ikinci dokunuş yok sayılır
+    onayGidiyor.add(u.id);
+
+    const eskiHal = u;
+    // 1) Önce ekran: satır anında onaylı görünüyor
+    urunuKoy({ ...u, kaynak: 'dukkan' });
+    yeniOnaylananlar.add(u.id);
+    sayaclariCiz();
+    satiriDegistir(URUNLER.find((x) => x.id === u.id));
+
+    // 2) Sonra sunucu. Fiyat gönderiliyor ama aynı değer: kaynak 'dukkan'
+    //    oluyor, değer değişmediği için fiyat_gecmisi'ne kayıt düşmüyor.
+    iste('/api/yonetici/urun', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: u.id, fiyat: u.fiyat }),
+      // Sahibi onaya dokunup hemen sayfadan ayrılırsa istek iptal oluyordu:
+      // ekranda "onaylı" görünen şey kaydedilmemiş kalıyordu. keepalive
+      // isteği sayfa kapansa da tamamlatıyor (gövde çok küçük, sınır 64 KB).
+      keepalive: true,
+    }).then((sonuc) => {
+      urunuKoy(sonuc.urun);
+      sayaclariCiz();
+      satiriDegistir(sonuc.urun);
+    }).catch((e) => {
+      // 3) Olmadı: satırı ve sayacı eski hâline döndür
+      urunuKoy(eskiHal);
+      yeniOnaylananlar.delete(u.id);
+      sayaclariCiz();
+      satiriDegistir(eskiHal);
+      if (e.tur !== 'oturum') {
+        bildirimGoster(u.ad, e.mesaj ?? e.veri?.hata ?? 'Onaylanamadı. Değişiklik KAYDEDİLMEDİ.');
+      }
+    }).finally(() => { onayGidiyor.delete(u.id); });
   }
 
   async function kaydet(yama, { uyariGoster = true } = {}) {
@@ -410,30 +480,47 @@
       urunuTazele(sonuc.urun);
       formDoldur(sonuc.urun);
 
-      if (uyariGoster && sonuc.uyarilar?.length) {
+      const uyariVar = Boolean(uyariGoster && sonuc.uyarilar?.length);
+      if (uyariVar) {
         dom.dUyariMetin.innerHTML = sonuc.uyarilar.map((u) => `<p>${kacar(u)}</p>`).join('');
         dom.dUyari.hidden = false;
       }
-      return true;
+      return { basarili: true, uyariVar };
     } catch (e) {
-      if (e.tur === 'oturum') return false;                 // yönlendirme yapıldı
-      if (e.tur === 'ag' || e.tur === 'limit') { hatalariGoster(e.mesaj); return false; }
+      if (e.tur === 'oturum') return { basarili: false };   // yönlendirme yapıldı
+      if (e.tur === 'ag' || e.tur === 'limit') { hatalariGoster(e.mesaj); return { basarili: false }; }
       if (e.durum === 400 && e.veri) {
         hatalariGoster(e.veri.hatalar ?? e.veri.hata ?? 'Geçersiz değer');
-        return false;
+        return { basarili: false };
       }
       hatalariGoster(e.veri?.hata ?? 'Kaydedilemedi. Değişiklik uygulanmadı.');
-      return false;
+      return { basarili: false };
     } finally {
       dom.dKaydet.textContent = eskiMetin;
       degisiklikKontrol();
     }
   }
 
+  // Yavaş ağda Kaydet'e üst üste basılınca üç istek gidiyordu: ilk beklenen
+  // şey sıçrama onayı, düğme o sırada hâlâ etkin kalıyordu. Bayrak tıklamada
+  // anında konuyor, await'lerden önce.
+  let kaydediliyor = false;
+
   dom.dKaydet.addEventListener('click', async () => {
+    if (kaydediliyor) return;
     const yama = degisiklikCikar();
     if (!Object.keys(yama).length) return;
+    kaydediliyor = true;
+    dom.dKaydet.disabled = true;
+    try {
+      await kaydetAkisi(yama);
+    } finally {
+      kaydediliyor = false;
+      degisiklikKontrol();
+    }
+  });
 
+  async function kaydetAkisi(yama) {
     // Sıçrama varsa KAYDETMEDEN önce sor. Sunucunun uyarısı kaydettikten
     // sonra geliyor; sahibi onu görmeden geçebilir, bu katman erken durduruyor.
     if (!(await sicramaOnayi(yama.fiyat))) return;
@@ -443,8 +530,11 @@
       fiyat: acikUrun.fiyat, eskiFiyat: acikUrun.eskiFiyat,
       stokta: acikUrun.stokta, miktar: acikUrun.miktar, birim: acikUrun.birim,
     };
-    await kaydet(yama);
-  });
+    const sonuc = await kaydet(yama);
+    // Uyarı varsa pencere açık kalsın: sahibi uyarıyı ve "Geri al"ı görmeli.
+    // Hata varsa da açık kalsın, hata penceresinin içinde gösteriliyor.
+    if (sonuc.basarili && !sonuc.uyariVar) dom.d.close();
+  }
 
   /* "Fiyat doğru": mevcut fiyatı olduğu gibi gönderir. Sunucu fiyat
      geldiği için kaynak'ı 'dukkan' yapar; değer değişmediğinden
@@ -453,20 +543,22 @@
     if (!acikUrun) return;
     dom.dOnay.disabled = true;
     dom.dOnay.textContent = 'Onaylanıyor…';
-    const basarili = await kaydet({ fiyat: acikUrun.fiyat }, { uyariGoster: false });
+    const sonuc = await kaydet({ fiyat: acikUrun.fiyat }, { uyariGoster: false });
     dom.dOnay.disabled = false;
     dom.dOnay.textContent = 'Fiyat doğru';
-    if (basarili) dom.d.close();      // pencere kapansın, listede kalınsın
+    if (sonuc.basarili) dom.d.close();      // pencere kapansın, listede kalınsın
   });
 
   dom.dGeriAl.addEventListener('click', async () => {
     if (!oncekiHal) return;
     dom.dGeriAl.disabled = true;
     dom.dGeriAl.textContent = 'Geri alınıyor…';
-    const basarili = await kaydet({ ...oncekiHal }, { uyariGoster: false });
+    const sonuc = await kaydet({ ...oncekiHal }, { uyariGoster: false });
     dom.dGeriAl.disabled = false;
     dom.dGeriAl.textContent = 'Geri al';
-    if (basarili) dom.dUyari.hidden = true;
+    // Geri alındıktan sonra pencere AÇIK kalıyor: sahibi eski fiyatın
+    // döndüğünü görsün. Kapatmayı kendi seçiyor.
+    if (sonuc.basarili) dom.dUyari.hidden = true;
   });
 
   /* ---------------- pencere ---------------- */
@@ -485,11 +577,7 @@
     const onay = e.target.closest('[data-onay]');
     if (onay) {
       const u = URUNLER.find((x) => x.id === onay.dataset.onay);
-      if (!u || onay.disabled) return;
-      onay.disabled = true;   // :disabled zaten soluklaştırıyor
-      // Başarılıysa satır yeniden çizildiği için düğme zaten kayboluyor;
-      // başarısızsa geri açılmalı, yoksa tekrar denenemez.
-      if (!(await fiyatOnayla(u))) onay.disabled = false;
+      if (u) fiyatOnayla(u);      // beklemiyoruz: satır anında değişiyor
       return;
     }
     const d = e.target.closest('[data-id]');

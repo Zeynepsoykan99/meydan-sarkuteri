@@ -368,7 +368,14 @@
 
   function detayCiz(u) {
     const yuzde = indirimYuzde(u);
-    const kaynakAdi = u.kaynak === 'a101' ? 'A101 Kapıda' : 'Migros Sanal Market';
+    // 'dukkan' = fiyatı dükkânın kendisi girdi. Bunu Migros'a yazmak
+    // ziyaretçiye yanlış bilgi verirdi: fiyatın sahibi belli olsun.
+    const KAYNAK_ADI = {
+      a101: 'A101 Kapıda',
+      migros: 'Migros Sanal Market',
+      dukkan: 'Meydan Şarküteri',
+    };
+    const kaynakAdi = KAYNAK_ADI[u.kaynak] ?? 'Belirtilmemiş';
     dom.detayIc.innerHTML = `
       <div class="detay-gorsel-alan${u.stokta === false ? ' gorsel-soluk' : ''}">
         ${u.stokta === false
