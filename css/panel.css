@@ -158,9 +158,15 @@
 .satir-onay-isaret { font-size: 19px; line-height: 1; }
 .satir-onay-yazi { font-size: 10.5px; font-weight: 700; }
 
-/* Az önce onaylandı: satır soluk ama işaret okunur kalıyor, yoksa
-   sahibi hangi satırı bitirdiğini göremez. */
-.satir-soluk > .urun-satir { opacity: .45; }
+/* Az önce onaylandı: satır "devre dışı" değil, "işi bitmiş" görünmeli.
+   Metin ve fiyat okunur kalıyor (--murekkep-soluk beyaz üstünde 5,7:1,
+   WCAG AA'nın üstünde); yalnızca görsel soluyor. Onaylandığını asıl
+   söyleyen şey sağdaki yeşil ✓. */
+.satir-soluk .satir-gorsel { opacity: .35; }
+.satir-soluk .satir-ad,
+.satir-soluk .satir-fiyat { color: var(--murekkep-soluk); }
+.satir-soluk .satir-eski { opacity: .7; }
+
 .satir-onay-bitti:disabled {
   opacity: 1; cursor: default;
   border-color: #1C6B36; background: #E4F5E9; color: #1C6B36;
@@ -191,14 +197,11 @@
   font-size: 15px; font-weight: 600; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-/* min-height: onay sonrası rozet kalkınca satır kısalmasın. Kısalsaydı
-   altındaki satırlar yukarı kayar, sahibi sıradakine yanlış dokunurdu.
-   Değer rozetin gerçek yüksekliği: 11.5px yazı + 2x3px iç boşluk,
-   ölçülerek doğrulandı. 21px'te satırlar 3px oynuyordu. */
-.satir-rozetler {
-  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;
-  min-height: 24px;
-}
+/* Rozet alanı yer AYIRMIYOR: rozetsiz satırda boş bir şerit bırakıyordu,
+   dar ekranda ad ile fiyat arasını açıyordu. Satır yüksekliğini sabit
+   tutmak .urun-satir'ın min-height'ının işi. */
+.satir-rozetler { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.satir-rozetler:empty { display: none; }
 .rozet {
   padding: 3px 8px; border-radius: 999px;
   font-size: 11.5px; font-weight: 700; white-space: nowrap;
@@ -219,12 +222,28 @@
 }
 
 /* Dar telefonda hızlı onay düğmesi yer alınca ürün adına ~110px kalıyor;
-   Türkçe ürün adları buna sığmıyor. Fiyat alt satıra iniyor, ad genişliyor. */
+   Türkçe ürün adları buna sığmıyor. Fiyat alt satıra iniyor, ad genişliyor.
+
+   Sabit yükseklik: rozet sayısı (0–2) ve adın satır sayısı (1–2) satır
+   boyunu 74–147px arasında oynatıyordu; onaylanınca rozet kalkıp satır
+   kısalıyor, altındakiler kayıyordu. Ölçülen en büyük değere sabitlenip
+   içerik dikey ortalanıyor: her satır aynı boyda, onaylanınca boy
+   değişmiyor, rozetsiz satırda da boşluk kalmıyor. */
 @media (max-width: 430px) {
-  .urun-satir { grid-template-columns: 52px minmax(0, 1fr); row-gap: 2px; }
+  .urun-satir {
+    grid-template-columns: 52px minmax(0, 1fr);
+    row-gap: 2px;
+    min-height: 147px;
+    align-content: center;
+  }
   .satir-gorsel { grid-row: 1 / 3; align-self: center; }
   .satir-fiyat { grid-column: 2; justify-self: start; text-align: left; }
   .satir-eski { display: inline; margin-left: 8px; }
+}
+
+/* 431–767px: üç sütunlu yerleşim ama ad hâlâ iki satıra düşebiliyor. */
+@media (min-width: 431px) and (max-width: 767px) {
+  .urun-satir { min-height: 119px; align-content: center; }
 }
 
 .liste-bos {
