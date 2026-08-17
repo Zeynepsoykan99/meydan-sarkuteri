@@ -92,7 +92,9 @@ verinin yazılmasını en baştan engeller.
 şekildedir, böylece arayüz iki kaynağı ayırt etmek zorunda kalmaz.
 GET dışındaki metodlar 405 döner.
 
-**Ürün/fiyat yazma ucu yoktur.** Katalog uçları yalnızca okur.
+**Katalog uçları yalnızca okur.** Yazma tek bir yerden yapılır:
+`PATCH /api/yonetici/urun`, oturum zorunlu (aşağıda "Panel"). Herkese
+açık uçların hiçbiri veritabanına yazmaz.
 
 ## Yönetici girişi
 
@@ -131,20 +133,105 @@ Nasıl çalıştığı:
 Ek bir ortam değişkeni **gerekmiyor**: oturumlar veritabanında tutuluyor,
 imzalı jeton kullanılmadığı için ayrı bir imza sırrı yok.
 
+## Panel
+
+`/giris.html` → giriş, `/panel.html` → panel. İkisi de `noindex`, arama
+motorlarına kapalı, `robots.txt` ile de engelli.
+
+Panel market sahibinin günlük işi için: **fiyat güncellemek.** Dükkânda,
+telefonla, elde ürünle kullanılacağı varsayılarak yapıldı — her tasarım
+kararı telefon öncelikli.
+
+**Liste.** 470 ürünün tamamı tek seferde çiziliyor (ölçüldü: 45 ms,
+görseller lazy). Üstte ilerleme çubuğu ve iki süzgeç: *Fiyatı
+onaylanmamış* ve *Ölçüsü eksik*. Sahibin işi bu iki sayıyı düşürmek.
+
+**Hızlı onay.** Her satırın sağındaki ✓ düğmesi, fiyatı değiştirmeden
+"bu fiyat doğru" der. Mevcut fiyatı olduğu gibi gönderir; sunucu
+`kaynak`'ı `dukkan` yapar, değer değişmediği için fiyat geçmişine kayıt
+düşmez. Dokunulduğu anda satır onaylı görünür, istek arkada gider;
+başarısız olursa satır eski hâline döner ve ekranın altında kalıcı bir
+bildirim çıkar. İşin büyük kısmı bu akış.
+
+**Düzenleme.** Satıra dokununca açılır: fiyat, indirim anahtarı, stok,
+miktar/birim. Virgüllü giriş kabul edilir (`39,5`). Fiyat on kattan fazla
+değişiyorsa **kaydetmeden önce** sorulur; sunucunun kendi uyarısı (reyon
+medyanı gibi istemcinin bilmediği sinyaller) buna ek olarak çalışır ve
+tek dokunuşla geri alınabilir.
+
+Ürün ekleme/silme, toplu düzenleme ve sıralama **yoktur**.
+
+| Uç | Ne yapar |
+| --- | --- |
+| `GET /api/yonetici/urunler` | **Korumalı** — panelin listesi, `no-store` |
+| `PATCH /api/yonetici/urun` | **Korumalı** — tek ürün; yalnızca fiyat, eski fiyat, miktar, birim, stok |
+
+`ad`, `reyon`, `gorsel`, `id` ve `kaynak` panelden değiştirilemez.
+Oturum sunucuda yoksa uçlar 401 döner; panel bunu yakalayınca hemen
+yönlendirmez, önce hangi işin kaydedilmediğini adıyla söyler.
+
+## Yedek
+
+```
+npm run yedek-al
+```
+
+Veritabanındaki güncel katalogu `data/products.json`'a yazar. Bu dosya
+**arayüzün yedeğidir**: `/api/katalog` düşerse `js/app.js` ona düşer ve
+site fiyatları göstermeye devam eder — o yüzden `.vercelignore`'a
+yazılmaz, deploy'a girer.
+
+**Ne zaman çalıştırmalı:** sahibi panelden bir grup fiyatı güncelledikten
+sonra. Çalıştırılmazsa yedek eskir ve bir arıza anında site aylar öncesinin
+fiyatlarını gösterir.
+
+Panel bunu kendisi hatırlatıyor: veritabanının en yeni kaydı ile yedek
+dosyasının damgası arasında **7 günden fazla** fark varsa girişte
+kapatılabilir bir bilgi şeridi çıkar (*"Yedek kopya 52 gün eskidi…"*).
+Şerit sahibe bir düğme sunmaz — yedek almak terminal işi, esnafın işi
+değil. Şeridi gören kişi bu komutu çalıştırmalı, sonra değişikliği
+commit'leyip push etmeli.
+
+Betik yazmadan önce dosyayı `.onceki` uzantısıyla kopyalar, yazdıktan
+sonra geri okuyup doğrular; doğrulama başarısız olursa eski dosyayı geri
+koyar. Çalışma dizini kirliyse uyarır.
+
+```
+node scripts/deneme-yedegi.js al|dogrula|geri|sina
+```
+
+Geliştirme aracı, deploy'a girmez (`scripts/` `.vercelignore`'da).
+`urunler` tablosunun tam kopyasını alır ve geri yükler — panelde elle
+deneme yaparken veritabanını sınama öncesine döndürmek için. `sina`
+komutu güvenlik ağının kendisini doğrular: bir ürünü bozar, geri yükler,
+tabloyu kopyayla karşılaştırır.
+
 ## Dosyalar
 
 ```
 index.html               Sayfa iskeleti
-css/style.css            Tüm stiller (tek dosya, CSS değişkenleriyle)
+giris.html               Yönetici girişi (noindex)
+panel.html               Fiyat paneli (noindex)
+css/style.css            Ana sitenin stilleri (tek dosya, CSS değişkenleriyle)
+css/panel.css            Panelin stilleri — ziyaretçi bu dosyayı hiç indirmez
+js/ortak.js              Ana site ile panelin ortak yardımcıları
 js/app.js                Veriyi getirir; filtre, arama, sıralama, birim fiyat, detay
+js/panel.js              Panel: liste, hızlı onay, düzenleme
 data/products.json       Katalog yedeği — 470 ürün, 13 reyon
 api/katalog.js           GET /api/katalog — veritabanından okur
+api/giris.js             Giriş, çıkış, oturum durumu
+api/yonetici/            Korumalı uçlar: durum, urunler, urun
+api/_lib/                Ortak sunucu kodu — alt çizgi fonksiyon üretimini engeller
 db/schema.sql            Tablolar, kısıtlar, fiyat geçmişi trigger'ı
 scripts/migrate.js       Şemayı kurar (idempotent)
 scripts/seed.js          JSON'u veritabanına basar
 scripts/veri-kontrol.js  Veri doğrulama — hem betik hem modül (aşağıya bak)
+scripts/yonetici-ekle.js Yönetici hesabı açar / şifre günceller
+scripts/yedek-al.js      Veritabanını data/products.json'a yazar
+scripts/deneme-yedegi.js Geliştirme aracı: tabloyu kopyalar ve geri yükler
 og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
 vercel.json              Build kapalı; api/ fonksiyonları çalışır
+.vercelignore            db/, scripts/ ve şifre dosyası yayına girmez
 ```
 
 ### Veri biçimi

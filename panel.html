@@ -13,51 +13,166 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D6202A'/%3E%3Cpath d='M6 22V10h4l6 8 6-8h4v12' fill='none' stroke='%23FFCE00' stroke-width='3.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/panel.css">
 </head>
-<body>
+<body class="panel-govde">
 
 <div class="tente" aria-hidden="true"></div>
 
-<!-- Oturum doğrulanana kadar içerik gizli: girişsiz birine bir an
-     bile panel iskeleti göstermiyoruz. -->
+<!-- Oturum doğrulanana kadar içerik gizli -->
 <p class="kimlik-yukleniyor" id="yukleniyor" role="status">Kontrol ediliyor…</p>
 
 <div id="panel" hidden>
-  <header class="baslik">
-    <div class="baslik-ust kucak panel-ust">
+
+  <header class="panel-baslik">
+    <div class="kucak panel-baslik-ic">
       <a class="logo" href="/">
         <span class="logo-mark" aria-hidden="true">M</span>
-        <span class="logo-yazi">
-          <strong>Meydan</strong>
-          <em>Şarküteri</em>
-        </span>
+        <span class="logo-yazi"><strong>Meydan</strong><em>Panel</em></span>
       </a>
-
-      <p class="panel-kullanici">
-        <span class="kas panel-kas">Panel</span>
-        <strong id="kullanici-adi"></strong>
-      </p>
-
+      <p class="panel-kim"><span id="kullanici-adi"></span></p>
       <button class="dugme dugme-hat panel-cikis" id="cikis" type="button">Çıkış</button>
     </div>
   </header>
 
-  <main class="kucak panel-govde">
-    <div class="bolum-baslik">
-      <h1>Tezgâh yönetimi</h1>
-      <p id="panel-ozet"></p>
+  <!-- Yedek tazeliği: yalnızca 7 günden eskiyse görünür -->
+  <div class="kucak">
+    <div class="yedek-serit" id="yedek-serit" role="status" hidden>
+      <p id="yedek-metin"></p>
+      <button class="yedek-kapat" id="yedek-kapat" type="button" aria-label="Bildirimi kapat">✕</button>
+    </div>
+  </div>
+
+  <main class="kucak panel-ana">
+
+    <!-- İlerleme -->
+    <div class="ilerleme" id="ilerleme">
+      <p class="ilerleme-yazi" id="ilerleme-yazi" aria-live="polite" aria-atomic="true"></p>
+      <div class="ilerleme-cubuk"><span id="ilerleme-dolu"></span></div>
     </div>
 
-    <div class="panel-bos">
-      <p class="bos-baslik">Ürün yönetimi yakında.</p>
-      <p class="bos-alt">
-        Bu alan bir sonraki adımda ürün ekleme, fiyat düzenleme ve stok
-        işaretleme için kullanılacak.
-      </p>
+    <!-- Arama ve süzgeçler -->
+    <div class="panel-araclar">
+      <div class="arama panel-arama">
+        <svg class="arama-ikon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 18 18"/></svg>
+        <input id="p-arama" type="search" placeholder="Ürün ara…" autocomplete="off"
+               autocapitalize="none" spellcheck="false" aria-label="Ürün ara">
+        <button type="button" class="arama-sil" id="p-arama-sil" hidden aria-label="Aramayı temizle">✕</button>
+      </div>
+
+      <label class="panel-secim">
+        <span class="gizli-etiket">Reyon</span>
+        <select id="p-reyon"><option value="hepsi">Tüm reyonlar</option></select>
+      </label>
+
+      <div class="panel-suzgecler">
+        <button class="suzgec-dugme" id="s-kontrolsuz" type="button" aria-pressed="false">
+          Fiyatı onaylanmamış <span class="suzgec-sayi" id="sayi-kontrolsuz"></span>
+        </button>
+        <button class="suzgec-dugme" id="s-olcusuz" type="button" aria-pressed="false">
+          Ölçüsü eksik <span class="suzgec-sayi" id="sayi-olcusuz"></span>
+        </button>
+      </div>
     </div>
+
+    <p class="liste-ozet" id="liste-ozet" aria-live="polite" aria-atomic="true"></p>
+
+    <ul class="urun-liste" id="urun-liste"></ul>
+
+    <p class="liste-bos" id="liste-bos" hidden>Bu süzgeçlerle eşleşen ürün yok.</p>
   </main>
 </div>
 
+<!-- Hızlı onay başarısız olursa. Ekrana sabit: sahibi listenin neresinde
+     olursa olsun görür. Kendiliğinden kaybolmuyor — kapatana kadar durur. -->
+<div class="bildirim" id="liste-hata" role="alert" aria-live="assertive" aria-atomic="true" hidden>
+  <div class="bildirim-govde">
+    <p id="liste-hata-metin"></p>
+    <!-- Oturum bitince: yönlendirmeyi sahibi tetikler, otomatik sayaç yok -->
+    <button class="dugme dugme-dolu bildirim-giris" id="liste-hata-giris" type="button" hidden>
+      Giriş ekranına git
+    </button>
+  </div>
+  <button class="bildirim-kapat" id="liste-hata-kapat" type="button" aria-label="Bildirimi kapat">✕</button>
+</div>
+
+<!-- ---------- Düzenleme ---------- -->
+<dialog class="duzenle" id="duzenle" aria-labelledby="d-ad">
+  <form id="duzenle-form" method="dialog">
+    <div class="duzenle-ust">
+      <img class="duzenle-gorsel" id="d-gorsel" alt="" width="64" height="64">
+      <div>
+        <p class="kart-reyon" id="d-reyon"></p>
+        <h2 class="duzenle-ad" id="d-ad"></h2>
+      </div>
+      <button class="duzenle-kapat" id="d-kapat" type="button" aria-label="Kapat">✕</button>
+    </div>
+
+    <!-- Sunucudan gelen hatalar -->
+    <div class="duzenle-hata" id="d-hata" role="alert" hidden></div>
+
+    <!-- Aykırı fiyat uyarısı + geri al -->
+    <div class="duzenle-uyari" id="d-uyari" role="alert" hidden>
+      <div id="d-uyari-metin"></div>
+      <button class="dugme dugme-hat d-geri-al" id="d-geri-al" type="button">Geri al</button>
+    </div>
+
+    <div class="duzenle-alanlar">
+      <label class="duzenle-etiket" for="d-fiyat">Fiyat (₺)</label>
+      <input class="duzenle-girdi" id="d-fiyat" type="text" inputmode="decimal"
+             autocomplete="off" enterkeyhint="done">
+
+      <!-- İndirim: ham "eski fiyat" kutusu yerine anahtar. Kapalıyken alan
+           hiç görünmüyor, kapatıldığında indirim de kalkıyor. -->
+      <label class="indirim-anahtar" for="d-indirimli">
+        <input type="checkbox" id="d-indirimli">
+        <span>Bu ürün indirimli</span>
+      </label>
+
+      <div id="d-indirim-alan" hidden>
+        <label class="duzenle-etiket" for="d-eski">İndirimden önceki fiyat (₺)</label>
+        <input class="duzenle-girdi" id="d-eski" type="text" inputmode="decimal"
+               autocomplete="off" enterkeyhint="done"></div>
+
+      <fieldset class="duzenle-stok">
+        <legend class="duzenle-etiket">Stok durumu</legend>
+        <label class="stok-secim"><input type="radio" name="stok" id="d-stok-var" value="var"> Tezgâhta</label>
+        <label class="stok-secim"><input type="radio" name="stok" id="d-stok-yok" value="yok"> Şu an yok</label>
+      </fieldset>
+
+      <label class="duzenle-etiket" for="d-miktar">Miktar <span class="duzenle-ipucu">birim fiyat hesabı için</span></label>
+      <div class="duzenle-olcu">
+        <input class="duzenle-girdi" id="d-miktar" type="text" inputmode="decimal"
+               autocomplete="off" placeholder="örn. 0,5">
+        <select class="duzenle-girdi" id="d-birim" aria-label="Birim">
+          <option value="">—</option>
+          <option value="kg">kg</option>
+          <option value="L">L</option>
+          <option value="adet">adet</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="duzenle-dip">
+      <!-- "Fiyat doğru": fiyatı değiştirmeden onaylar. Yalnızca henüz
+           onaylanmamış ürünlerde görünür. -->
+      <button class="dugme dugme-hat duzenle-onay" id="d-onay" type="button">Fiyat doğru</button>
+      <button class="dugme dugme-dolu duzenle-kaydet" id="d-kaydet" type="button" disabled>Kaydet</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ---------- Büyük fiyat değişikliğinde onay ---------- -->
+<dialog class="onay" id="onay" aria-labelledby="onay-baslik">
+  <h2 class="onay-baslik" id="onay-baslik">Bir dakika</h2>
+  <p class="onay-metin" id="onay-metin"></p>
+  <div class="onay-dugmeler">
+    <button class="dugme dugme-hat" id="onay-hayir" type="button">Vazgeç</button>
+    <button class="dugme dugme-dolu" id="onay-evet" type="button">Evet</button>
+  </div>
+</dialog>
+
+<script src="js/ortak.js"></script>
 <script src="js/panel.js"></script>
 </body>
 </html>

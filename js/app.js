@@ -70,22 +70,10 @@
 
   /* ---------------- yardımcılar ---------------- */
 
-  const paraBicim = new Intl.NumberFormat('tr-TR', {
-    style: 'currency', currency: 'TRY', minimumFractionDigits: 2,
-  });
-
-  const para = (n) => paraBicim.format(n);
-
-  const kacar = (s) => String(s).replace(/[&<>"']/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-  ));
-
-  // Türkçe arama: ı/i, ş/s, ğ/g farkları aramayı bozmasın
-  const sadelestir = (s) => s
-    .toLocaleLowerCase('tr')
-    .replace(/[ıîi̇]/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
-    .trim();
+  /* Bu üçü js/ortak.js'te, panelle paylaşılıyor. Özellikle arama
+     sadeleştirmesi: iki tarafta ayrışırsa panelde bulunan ürün ana
+     sitede bulunamaz hale gelir. */
+  const { para, kacar, sadelestir } = window.Ortak;
 
   const reyonAdi = (id) => {
     const r = REYONLAR.find((x) => x.id === id);
@@ -380,7 +368,14 @@
 
   function detayCiz(u) {
     const yuzde = indirimYuzde(u);
-    const kaynakAdi = u.kaynak === 'a101' ? 'A101 Kapıda' : 'Migros Sanal Market';
+    // 'dukkan' = fiyatı dükkânın kendisi girdi. Bunu Migros'a yazmak
+    // ziyaretçiye yanlış bilgi verirdi: fiyatın sahibi belli olsun.
+    const KAYNAK_ADI = {
+      a101: 'A101 Kapıda',
+      migros: 'Migros Sanal Market',
+      dukkan: 'Meydan Şarküteri',
+    };
+    const kaynakAdi = KAYNAK_ADI[u.kaynak] ?? 'Belirtilmemiş';
     dom.detayIc.innerHTML = `
       <div class="detay-gorsel-alan${u.stokta === false ? ' gorsel-soluk' : ''}">
         ${u.stokta === false

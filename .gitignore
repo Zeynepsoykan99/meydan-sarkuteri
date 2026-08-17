@@ -22,3 +22,7 @@ node_modules/
 
 # yedek-al.js yazma oncesi kopyasi
 data/products.json.onceki
+
+# Çalışma notu, commit edilmiyor
+ILERLEME.md
+.deneme-yedek.json
