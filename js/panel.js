@@ -99,8 +99,11 @@
     // Onaylanmış üründe rozet yok: 470 satırlık listede her satıra rozet
     // koymak gürültü. Rozet yalnızca "burada yapacak iş var" demek.
     const r = [];
+    // Rozetler fiyatla aynı satırda duruyor; kısa olmaları şart.
+    // Süzgeç düğmelerindeki uzun etiketler ("Fiyatı onaylanmamış") aynı
+    // kaldı — orada yer var ve açıklık daha önemli.
     if (u.stokta === false) r.push('<span class="rozet rozet-yok">Şu an yok</span>');
-    if (!onaylanmis(u)) r.push('<span class="rozet rozet-kontrolsuz">Fiyat onaylanmadı</span>');
+    if (!onaylanmis(u)) r.push('<span class="rozet rozet-kontrolsuz">Onaysız</span>');
     if (olcusuzMu(u)) r.push('<span class="rozet rozet-olcusuz">Ölçü eksik</span>');
     return r.join('');
   }
@@ -147,10 +150,8 @@
         <button class="urun-satir" type="button" data-id="${kacar(u.id)}">
           <img class="satir-gorsel" src="${kacar(u.gorsel ?? '')}" alt=""
                loading="lazy" decoding="async" width="52" height="52">
-          <span class="satir-orta">
-            <span class="satir-ad">${kacar(u.ad)}</span>
-            <span class="satir-rozetler">${rozetler(u)}</span>
-          </span>
+          <span class="satir-ad">${kacar(u.ad)}</span>
+          <span class="satir-rozetler">${rozetler(u)}</span>
           <span class="satir-fiyat">${para(u.fiyat)}${eski}</span>
         </button>${onay}
       </li>`;

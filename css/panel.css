@@ -138,7 +138,11 @@
 .urun-liste { display: grid; gap: 8px; }
 
 /* Satır = düzenlemeyi açan büyük düğme + yanında hızlı onay.
-   İç içe <button> geçersiz olduğu için ikisi kardeş. */
+   İç içe <button> geçersiz olduğu için ikisi kardeş.
+
+   Izgara alanla kuruluyor: görsel, ad, rozetler ve fiyat doğrudan
+   ızgara çocukları. Geniş ekranda fiyat sağda dikey ortada; dar
+   ekranda ikinci satırda rozetlerle yan yana. Tek DOM, iki yerleşim. */
 .satir { display: flex; align-items: stretch; gap: 8px; }
 .satir > .urun-satir { flex: 1 1 auto; min-width: 0; }
 
@@ -175,7 +179,10 @@
 .urun-satir {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) auto;
-  align-items: center; gap: 12px;
+  grid-template-areas:
+    "gorsel ad    fiyat"
+    "gorsel rozet fiyat";
+  align-items: center; gap: 4px 12px;
   width: 100%;
   min-height: 68px;                 /* dokunma hedefi fazlasıyla üstünde */
   padding: 10px 12px;
@@ -189,18 +196,21 @@
 .urun-satir:focus-visible { outline: 3px solid var(--kirmizi); outline-offset: 2px; }
 
 .satir-gorsel {
+  grid-area: gorsel;
   width: 52px; height: 52px; object-fit: contain;
   background: var(--tezgah); border-radius: 8px;
 }
-.satir-orta { min-width: 0; }
 .satir-ad {
+  grid-area: ad; min-width: 0;
   font-size: 15px; font-weight: 600; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-/* Rozet alanı yer AYIRMIYOR: rozetsiz satırda boş bir şerit bırakıyordu,
-   dar ekranda ad ile fiyat arasını açıyordu. Satır yüksekliğini sabit
-   tutmak .urun-satir'ın min-height'ının işi. */
-.satir-rozetler { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+/* Rozet alanı yer AYIRMIYOR: boşken tamamen kalkıyor. Satır boyunu
+   sabit tutmak .urun-satir'ın min-height'ının işi. */
+.satir-rozetler {
+  grid-area: rozet; min-width: 0;
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
 .satir-rozetler:empty { display: none; }
 .rozet {
   padding: 3px 8px; border-radius: 999px;
@@ -212,6 +222,7 @@
 .rozet-dukkan     { background: #E4F5E9; color: #1C6B36; }
 
 .satir-fiyat {
+  grid-area: fiyat;
   justify-self: end; text-align: right;
   font-family: var(--display); font-weight: 800; font-size: 17px;
   font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -230,20 +241,35 @@
    içerik dikey ortalanıyor: her satır aynı boyda, onaylanınca boy
    değişmiyor, rozetsiz satırda da boşluk kalmıyor. */
 @media (max-width: 430px) {
+  /* İkinci satır: solda rozetler, sağda fiyat. Fiyat her zaman var,
+     yani bu satır asla boş kalmıyor — rozet kalkınca boşluk oluşmuyor.
+     Rozet alanı görsel sütununa da uzanıyor (gorsel yalnızca 1. satırda),
+     yoksa 320px'te rozete 42px kalıyordu. */
+  /* Sabit boy: rozet sayısı ve adın satır sayısı boyu oynatıyordu,
+     onaylanınca rozet kalkıp satır kısalıyor, altındakiler kayıyordu.
+     Ölçülen en büyük değer (320px'te iki rozet sarınca 125,1px). */
   .urun-satir {
-    grid-template-columns: 52px minmax(0, 1fr);
-    row-gap: 2px;
-    min-height: 147px;
+    grid-template-areas:
+      "gorsel ad    ad"
+      "rozet  rozet fiyat";
     align-content: center;
+    min-height: 126px;
   }
-  .satir-gorsel { grid-row: 1 / 3; align-self: center; }
-  .satir-fiyat { grid-column: 2; justify-self: start; text-align: left; }
-  .satir-eski { display: inline; margin-left: 8px; }
+  .satir-gorsel { align-self: center; }
+  .satir-ad { align-self: center; }
+  .satir-fiyat { align-self: end; }
+
+  /* Yer daralırsa rozet küçülür, fiyat değil: fiyat sütunu auto,
+     rozet sütunu esneyen taraf. */
+  .rozet { font-size: 11px; padding: 2px 7px; }
+  .satir-rozetler { overflow: hidden; }
 }
 
-/* 431–767px: üç sütunlu yerleşim ama ad hâlâ iki satıra düşebiliyor. */
+/* 431–767px: üç sütunlu yerleşim ama ad iki satıra düşebiliyor
+   (ölçülen en büyük 88,8px). 768px üstünde bütün satırlar zaten
+   74px — görsel boyu belirliyor, min-height'a gerek yok. */
 @media (min-width: 431px) and (max-width: 767px) {
-  .urun-satir { min-height: 119px; align-content: center; }
+  .urun-satir { align-content: center; min-height: 89px; }
 }
 
 .liste-bos {
