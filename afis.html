@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kapı afişi — Meydan Şarküteri</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#D6202A">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D6202A'/%3E%3Cpath d='M6 22V10h4l6 8 6-8h4v12' fill='none' stroke='%23FFCE00' stroke-width='3.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+
+<style>
+/* =====================================================================
+   Kapı afişi — A4 dikey, asıl hedef kâğıt.
+
+   Sitenin :root değişkenleri ve yazı tipleri kullanılıyor; yeni bir
+   tasarım dili yok. Ölçüler mm cinsinden: ekranda da kâğıt oranında
+   görünsün, yazdırınca birebir otursun.
+
+   Siyah-beyaz yazıcı varsayımı: QR saf beyaz zemin üstünde koyu
+   mürekkep. Renkler yalnızca süs; renksiz basılınca da her şey okunur.
+   ===================================================================== */
+
+:root { --afis-kenar: 16mm; }
+
+body {
+  background: var(--tezgah);
+  margin: 0;
+  display: flex; justify-content: center;
+  padding: 24px 12px;
+}
+
+.sayfa {
+  /* A4: 210 x 297 mm */
+  box-sizing: border-box;
+  width: 210mm; min-height: 297mm;
+  padding: var(--afis-kenar);
+  background: var(--beyaz);
+  color: var(--murekkep);
+  display: flex; flex-direction: column;
+  box-shadow: var(--golge);
+}
+
+/* ---------- üst ---------- */
+.afis-ust {
+  display: flex; align-items: center; gap: 14px;
+  padding-bottom: 10mm;
+  border-bottom: 2px solid var(--murekkep);
+}
+.afis-ust .logo-mark {
+  width: 22mm; height: 22mm; border-radius: 5mm;
+  font-size: 13mm; flex: 0 0 auto;
+}
+.afis-ad {
+  font-family: var(--display); font-weight: 800;
+  font-size: 13mm; line-height: 1.05; letter-spacing: -.01em;
+}
+.afis-kas {
+  font-family: var(--display); font-weight: 600;
+  font-size: 4.2mm; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--kirmizi);
+}
+
+/* ---------- orta ---------- */
+.afis-orta {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8mm; padding: 10mm 0;
+}
+
+.afis-cagri {
+  font-family: var(--display); font-weight: 800;
+  font-size: 15mm; line-height: 1.08; text-align: center;
+  letter-spacing: -.02em;
+}
+.afis-cagri em { font-style: normal; color: var(--kirmizi); }
+
+/* QR: dış kutu 103mm; iç boşluk (2x5mm) ve çerçeve (2x1.5mm) düşünce
+   kodun kendisi 90mm = 9 cm kalıyor, istenen en az 8 cm'in üstünde.
+   Beyaz zemin ve çerçeve sessiz alanı garantiliyor. */
+.afis-qr {
+  box-sizing: border-box;
+  width: 103mm; height: 103mm;
+  padding: 5mm;
+  background: #FFFFFF;
+  border: 1.5mm solid var(--murekkep);
+  border-radius: 4mm;
+}
+.afis-qr img { display: block; width: 100%; height: 100%; }
+
+.afis-yonerge {
+  font-size: 5mm; color: var(--murekkep-soluk); text-align: center;
+}
+.afis-adres-kisa {
+  font-family: var(--display); font-weight: 600;
+  font-size: 5.5mm; letter-spacing: .01em; text-align: center;
+  padding: 3mm 7mm;
+  border: 1px solid var(--cizgi); border-radius: 999px;
+}
+
+/* ---------- alt ---------- */
+.afis-alt {
+  padding-top: 8mm;
+  border-top: 2px solid var(--murekkep);
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 10mm;
+}
+.afis-alt-blok { font-size: 5mm; line-height: 1.5; }
+.afis-etiket {
+  font-size: 3.4mm; font-weight: 800; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--murekkep-soluk);
+  margin-bottom: 1.5mm;
+}
+.afis-tel {
+  font-family: var(--display); font-weight: 800;
+  font-size: 8mm; letter-spacing: .01em; white-space: nowrap;
+}
+.afis-saat { font-weight: 600; }
+
+/* ---------- yazdırma ---------- */
+@page { size: A4 portrait; margin: 0; }
+
+@media print {
+  /* Renkler yazıcıda korunsun; korunmazsa da tasarım siyah-beyaz okunur */
+  html, body { background: #FFFFFF; margin: 0; padding: 0; }
+  body { display: block; }
+  .sayfa {
+    width: auto; min-height: auto; height: 297mm;
+    box-shadow: none; page-break-after: avoid;
+  }
+  .afis-qr { border-color: #000000; }
+  a { text-decoration: none; color: inherit; }
+}
+
+/* Dar ekranda önizleme: kâğıt oranını koru, yalnızca küçült.
+   QR sabit mm olduğu için ekranı taşırıyordu; burada esniyor.
+   Yazdırmada bu kural geçerli değil, basılan boyut 103mm kalıyor. */
+@media screen and (max-width: 230mm) {
+  body { padding: 12px 8px; }
+  .sayfa { width: 100%; max-width: 210mm; min-height: 0; }
+  .afis-qr { width: min(103mm, 74vw); height: auto; aspect-ratio: 1; }
+  .afis-ad { font-size: min(13mm, 8vw); }
+  .afis-cagri { font-size: min(15mm, 9vw); }
+  .afis-tel { font-size: min(8mm, 6vw); }
+  .afis-alt { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="sayfa">
+
+  <header class="afis-ust">
+    <span class="logo-mark" aria-hidden="true">M</span>
+    <div>
+      <p class="afis-kas">Mahallenin tezgâhı</p>
+      <p class="afis-ad">Meydan Şarküteri</p>
+    </div>
+  </header>
+
+  <main class="afis-orta">
+    <p class="afis-cagri">Fiyatlarımız <em>burada</em></p>
+
+    <div class="afis-qr">
+      <img src="qr.svg" alt="Kare kodu okutunca meydan-sarkuteri.vercel.app adresine gidersiniz"
+           width="340" height="340">
+    </div>
+
+    <p class="afis-yonerge">Telefonun kamerasını kare koda tutun</p>
+    <p class="afis-adres-kisa">meydan-sarkuteri.vercel.app</p>
+  </main>
+
+  <footer class="afis-alt">
+    <div class="afis-alt-blok">
+      <p class="afis-etiket">Adres</p>
+      <p>Dikbıyık Mah. Atatürk Bul. No: 16A<br>Çarşamba / Samsun</p>
+      <p class="afis-saat">Her gün 07:30 – 22:00</p>
+    </div>
+    <div class="afis-alt-blok" style="text-align: right">
+      <p class="afis-etiket">Telefon</p>
+      <p class="afis-tel">0362 854 11 44</p>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

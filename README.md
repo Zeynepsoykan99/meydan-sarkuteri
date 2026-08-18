@@ -226,6 +226,36 @@ liste (`Cumartesi, Pazar`) ya da toplu ifade (`Her gün`, `Hafta içi`,
 doğru hesaplanır. Açık/kapalı hesabı **Europe/Istanbul**'a sabit;
 ziyaretçinin cihaz saat dilimi dikkate alınmaz.
 
+## Kapı afişi
+
+`afis.html` — kapıya asılacak, A4 dikey, basılmak için. Ortasında
+`qr.svg`; okutan müşteri doğrudan siteye gidiyor. Alan adı alınmadığı
+için adres uzun ve tirelidir, kimse elle yazmaz.
+
+**Basmak için:** `afis.html`'i tarayıcıda aç → Yazdır → **A4, dikey,
+kenar boşluğu "Yok"**. Tek sayfaya sığar. Renkli basmaya gerek yok;
+tasarım siyah-beyaz yazıcıya göre yapıldı, QR koyu mürekkep beyaz zemin.
+
+QR'ın basılı boyutu **9 cm**. Ölçüldü: 3 cm'e kadar küçültülse, gri
+tonlamaya indirilse, bulanıklaştırılsa ya da soluk tonerle basılsa bile
+okunuyor (hata düzeltme seviyesi Q, %25).
+
+`robots.txt` afişi engelliyor, sayfada `noindex` var, `sitemap.xml`'e
+girmiyor — bu sayfa aranmak için değil.
+
+### QR yeniden üretmek gerekirse
+
+Adres değişirse (alan adı alınırsa) `qr.svg` yeniden üretilmeli.
+Projede kalıcı bağımlılık **yok**; tek seferlik araçla üretildi:
+
+```
+mkdir /tmp/qr && cd /tmp/qr && npm i qrcode
+node -e "require('qrcode').toString('https://YENI-ADRES',   { type:'svg', errorCorrectionLevel:'Q', margin:2,     color:{dark:'#1B1917',light:'#FFFFFF'} })   .then(s => require('fs').writeFileSync('qr.svg', s))"
+```
+
+Çıktıyı `qr.svg` olarak depoya koy, aracı bırakma. `afis.html`'deki
+adres metnini de güncellemeyi unutma.
+
 ## Yedek
 
 ```
@@ -277,6 +307,8 @@ data/products.json       Katalog yedeği — 470 ürün, 13 reyon
 data/dukkan.json         Adres, saatler, iletişim (dolduruldu bayrağı)
 js/dukkan.js             Dükkân bölümü, açık/kapalı hesabı
 tests/                   Tarayıcı sınamaları (deploy'a girmez)
+afis.html                Kapıya asılacak A4 afiş (noindex)
+qr.svg                   Siteye giden kare kod, afişte kullanılıyor
 api/katalog.js           GET /api/katalog — veritabanından okur
 api/giris.js             Giriş, çıkış, oturum durumu
 api/yonetici/            Korumalı uçlar: durum, urunler, urun
