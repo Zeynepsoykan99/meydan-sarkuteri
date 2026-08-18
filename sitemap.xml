@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Tek sayfalık site. lastmod, js/products.js içindeki VERI_TARIHI ile aynı
-     tarihi taşır: sayfanın içeriği fiyat verisiyle birlikte değişir. -->
+<!-- Tek sayfalık site. lastmod, data/products.json'daki "guncellendi" ile
+     aynı tarihi taşır: sayfanın içeriği fiyat verisiyle birlikte değişir.
+     Yönetim sayfaları (giris.html, panel.html) buraya GİRMEZ. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://meydan-sarkuteri.vercel.app/</loc>

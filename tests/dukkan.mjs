@@ -258,8 +258,9 @@ try {
     !r.bolum ? ok('bölüm gizli') : no('bölüm görünüyor');
     r.kart === 470 ? ok('sayfa normal, 470 kart') : no(`${r.kart} kart`);
     !r.sizinti ? ok('sayfada hiçbir yerde "DOLDURULACAK" yok') : no('DOLDURULACAK sızmış');
-    /07\.00/.test(r.ust ?? '') ? ok('üst başlık sabit metninde kaldı') : no(`üst: ${r.ust}`);
-    /Cumhuriyet/.test(r.alt ?? '') ? ok('altbilgi sabit metninde kaldı') : no(`alt: ${r.alt}`);
+    // index.html'deki yedek metin artık gerçek bilgiyi taşıyor
+    /07:30/.test(r.ust ?? '') ? ok('üst başlık sabit metninde kaldı') : no(`üst: ${r.ust}`);
+    /Dikbıyık/.test(r.alt ?? '') ? ok('altbilgi sabit metninde kaldı') : no(`alt: ${r.alt}`);
     const u = uyari.find((x) => /doldurulmad/i.test(x));
     u ? ok(`konsol uyarısı: "${u}"`) : no('konsol uyarısı yok');
     hata.length === 0 ? ok('JS hatası yok') : no(`${hata.length}: ${hata.join(' | ')}`);
