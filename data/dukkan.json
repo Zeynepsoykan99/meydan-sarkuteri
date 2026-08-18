@@ -1,0 +1,28 @@
+{
+  "_not": "Dükkânın sabit bilgileri. Veritabanında DEĞİL: yılda bir kez değişir, panelden düzenlenmiyor, ve dosyada durunca veritabanı düşse bile site bu bölümü göstermeye devam ediyor. Boş bırakılan alanlar sayfada hiç görünmez.",
+  "_uyari": "dolduruldu false iken bu bilgiler ziyaretçiye HİÇ gösterilmez. Gerçek bilgileri yazdıktan sonra true yap; veri-kontrol.js DOLDURULACAK kalıntısı kalmadığını denetler.",
+  "dolduruldu": false,
+  "ad": "DOLDURULACAK — dükkânın tam adı",
+  "adres": {
+    "satir": "DOLDURULACAK — cadde/sokak, kapı no",
+    "ilce": "DOLDURULACAK — ilçe",
+    "il": "DOLDURULACAK — il",
+    "haritaUrl": ""
+  },
+  "iletisim": {
+    "telefon": "",
+    "whatsapp": ""
+  },
+  "saatler": [
+    { "gunler": "Pazartesi – Cumartesi", "acilis": "08:00", "kapanis": "21:00" },
+    { "gunler": "Pazar", "acilis": "09:00", "kapanis": "20:00" }
+  ],
+  "siparis": {
+    "var": true,
+    "yontem": "whatsapp",
+    "aciklama": "DOLDURULACAK — sipariş nasıl veriliyor",
+    "teslimat": "DOLDURULACAK — teslimat koşulları"
+  },
+  "odeme": ["nakit", "kredi kartı"],
+  "fotograf": null
+}

@@ -67,6 +67,11 @@
   </nav>
 </header>
 
+<!-- Hızlı erişim: açık/kapalı, telefon, WhatsApp. Müşterinin en çok
+     ihtiyaç duyduğu üç şey; aşağı kaydırmasına gerek kalmasın.
+     data/dukkan.json okunamazsa hiç görünmez. -->
+<div class="dukkan-serit" id="dukkan-serit" hidden></div>
+
 <main>
 
   <noscript>
@@ -158,6 +163,10 @@
       </div>
     </div>
   </section>
+
+  <!-- Dükkân bilgileri. Ürünlerden SONRA: ziyaretçi önce fiyatlara bakar.
+       İçeriği js/dukkan.js, data/dukkan.json'dan çiziyor. -->
+  <section class="dukkan" id="dukkan" hidden></section>
 </main>
 
 <footer class="ayak">
@@ -195,6 +204,7 @@
 <!-- Veri artık script etiketiyle değil, app.js içinden fetch ile geliyor -->
 <script src="js/ortak.js"></script>
 <script src="js/app.js"></script>
+<script src="js/dukkan.js"></script>
 
 <!-- Vercel analitiği, paket gerektirmeyen kurulum. İkisi ayrı ürün, ayrı ayrı
      panelden açılır; açılmayanın script'i 404 döner ama defer olduğu için
