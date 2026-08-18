@@ -777,7 +777,9 @@ button { cursor: pointer; }
 .acik .durum-nokta   { background: #3FBF6A; box-shadow: 0 0 0 3px rgba(63, 191, 106, .25); }
 .kapali .durum-nokta { background: var(--sari); box-shadow: 0 0 0 3px rgba(255, 206, 0, .2); }
 
-.serit-dugmeler { display: flex; gap: 8px; }
+/* Düğmede numara yazdığı için genişledi; 320px'te telefon + WhatsApp
+   yan yana sığmıyordu. Sığmazsa alt satıra iniyorlar. */
+.serit-dugmeler { display: flex; flex-wrap: wrap; gap: 8px; }
 .serit-dugme {
   display: inline-flex; align-items: center; gap: 7px;
   min-height: 44px; padding: 8px 16px;
@@ -866,7 +868,7 @@ button { cursor: pointer; }
   .dukkan { padding: 44px 0 52px; }
   .serit-ic { justify-content: flex-start; }
   .serit-dugmeler { flex: 1 1 auto; }
-  .serit-dugme { flex: 1 1 0; justify-content: center; }
+  .serit-dugme { flex: 1 1 140px; justify-content: center; }
 }
 
 /* Başlıktaki açılış bilgisi: saat ve adres alt alta. js/dukkan.js

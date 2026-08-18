@@ -365,6 +365,62 @@ export function dukkanDenetle(veri) {
 }
 
 /* =====================================================================
+   index.html'deki yedek metinler ile dukkan.json senkron mu?
+
+   Başlıktaki .acilis ve altbilgideki .ayak-marka, JS gelmeden ya da
+   dukkan.json okunamazsa görünen metinler; dolduruldu:false iken de
+   kasıtlı olarak bunlara düşülüyor. Yani iki kaynak var ve elle
+   eşlenmeleri gerekiyor. Uyuşmazlığı burada yakalıyoruz — yoksa dükkân
+   taşındığında sayfa bir yerde yeni, bir yerde eski adresi gösterir.
+   ===================================================================== */
+
+export function yedekMetinDenetle(html, dukkan) {
+  const hatalar = [];
+  if (!dukkan || dukkan.dolduruldu !== true) return hatalar;   // bayrak kapalıysa konu dışı
+
+  const dolu = (v) => typeof v === 'string' && v.trim() !== '';
+  const a = dukkan.adres || {};
+  const adres = dolu(a.satir) ? a.satir.trim() : null;
+
+  const gecerli = (Array.isArray(dukkan.saatler) ? dukkan.saatler : [])
+    .filter((k) => /^\d{1,2}:\d{2}$/.test(String(k && k.acilis))
+                && /^\d{1,2}:\d{2}$/.test(String(k && k.kapanis)));
+  // js/dukkan.js ile AYNI kural: tek kural varsa yazıyla, çoklu ise genel ifade
+  const saat = gecerli.length === 1
+    ? `${gecerli[0].gunler} ${gecerli[0].acilis} – ${gecerli[0].kapanis}`
+    : gecerli.length > 1 ? 'Çalışma saatleri aşağıda' : null;
+
+  const govde = (sec, ad) => {
+    const m = new RegExp(sec, 's').exec(html);
+    if (!m) { hatalar.push(`index.html: ${ad} bulunamadı (seçici değişmiş olabilir)`); return null; }
+    return m[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  };
+
+  const ust = govde('<p class="acilis">(.*?)</p>', 'başlıktaki .acilis');
+  const alt = govde('<div class="ayak-marka">(.*?)</div>', 'altbilgideki .ayak-marka');
+
+  const bekle = (metin, parca, nerede) => {
+    if (metin === null || parca === null) return;
+    if (!metin.includes(parca)) {
+      hatalar.push(`index.html ${nerede} dukkan.json ile uyuşmuyor.\n` +
+                   `      olması gereken : "${parca}"\n` +
+                   `      sayfada yazan  : "${metin}"`);
+    }
+  };
+
+  bekle(ust, saat, 'başlığında (.acilis) saat');
+  bekle(ust, adres, 'başlığında (.acilis) adres');
+  bekle(alt, adres, 'altbilgisinde (.ayak-marka) adres');
+  bekle(alt, saat, 'altbilgisinde (.ayak-marka) saat');
+  if (alt !== null && dolu(dukkan.ad) && !alt.includes(dukkan.ad.trim())) {
+    hatalar.push(`index.html altbilgisinde dükkân adı uyuşmuyor.\n` +
+                 `      olması gereken : "${dukkan.ad.trim()}"\n` +
+                 `      sayfada yazan  : "${alt}"`);
+  }
+  return hatalar;
+}
+
+/* =====================================================================
    Betik olarak çalıştırıldığında
    ===================================================================== */
 
@@ -412,6 +468,14 @@ if (dogrudanCalisiyor) {
     const s = dukkanDenetle(d);
     hatalar.push(...s.hatalar.map((h) => `dukkan.json: ${h}`));
     uyarilar.push(...s.uyarilar.map((u) => `dukkan.json: ${u}`));
+
+    // index.html'deki yedek metinler bu dosyayla eşleşmeli
+    try {
+      const html = readFileSync(join(KOK, 'index.html'), 'utf8');
+      hatalar.push(...yedekMetinDenetle(html, d));
+    } catch (e) {
+      uyarilar.push(`index.html okunamadı (${e.message}) — yedek metin denetimi atlandı`);
+    }
   } catch (e) {
     uyarilar.push(`dukkan.json okunamadı (${e.message}) — dükkân bölümü çıkmayacak`);
     dukkanKaynak = null;

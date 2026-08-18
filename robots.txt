@@ -7,4 +7,7 @@ Allow: /
 Disallow: /giris.html
 Disallow: /panel.html
 
+# Kapı afişi: basılmak için, aranmak için değil.
+Disallow: /afis.html
+
 Sitemap: https://meydan-sarkuteri.vercel.app/sitemap.xml

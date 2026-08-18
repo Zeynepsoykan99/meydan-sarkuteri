@@ -210,8 +210,11 @@ window.Dukkan = (function () {
     }
     const dugmeler = [];
     if (doluMu(tel)) {
-      dugmeler.push(`<a class="serit-dugme" href="${kacar(telAdresi(tel))}">
-        <span aria-hidden="true">📞</span> Ara</a>`);
+      // Düğmede numaranın kendisi yazıyor: telefonda dokununca arıyor,
+      // masaüstünde en azından numarayı gösteriyor.
+      dugmeler.push(`<a class="serit-dugme" href="${kacar(telAdresi(tel))}"
+        aria-label="Telefonla ara: ${kacar(tel)}">
+        <span aria-hidden="true">📞</span> ${kacar(tel)}</a>`);
     }
     if (waAdres) {
       dugmeler.push(`<a class="serit-dugme serit-dugme-wa" href="${kacar(waAdres)}"
@@ -275,7 +278,8 @@ window.Dukkan = (function () {
     if (doluMu(tel) || waAdres) {
       const satirlar = [];
       if (doluMu(tel)) {
-        satirlar.push(`<a class="dukkan-dugme" href="${kacar(telAdresi(tel))}">
+        satirlar.push(`<a class="dukkan-dugme" href="${kacar(telAdresi(tel))}"
+          aria-label="Telefonla ara: ${kacar(tel)}">
           <span aria-hidden="true">📞</span> ${kacar(tel)}</a>`);
       }
       if (waAdres) {
