@@ -9,21 +9,12 @@ const VERI = `${KOK}/data/dukkan.json`;
 const CIKTI = `${KOK}/.gorsel`;
 const OZGUN = readFileSync(VERI);
 
-const v = JSON.parse(OZGUN.toString('utf8'));
-v.dolduruldu = true;
-v.ad = 'Meydan Şarküteri';
-v.adres = { satir: 'Cumhuriyet Meydanı No: 7', ilce: 'Karşıyaka', il: 'İzmir',
-            haritaUrl: 'https://maps.google.com/?q=Cumhuriyet+Meydani+No+7+Karsiyaka+Izmir' };
-v.iletisim = { telefon: '+90 232 123 45 67', whatsapp: '+90 555 123 45 67' };
-v.siparis = { var: true, yontem: 'whatsapp',
-              aciklama: 'WhatsApp’tan yazın, hazırlayıp haber verelim.',
-              teslimat: 'Mahalle içi 150 TL üzeri ücretsiz teslimat.' };
-writeFileSync(VERI, JSON.stringify(v, null, 2), 'utf8');
+/* Dosya artık gerçek bilgilerle dolu; sahte veri yazmıyoruz. */
 
 const t = await chromium.launch({ executablePath: process.env.CHROME_YOLU || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
 try {
-  // 1050px yükseklik: 943px'lik bölüm tek karede sığsın (genişlik gerçek telefon)
-  const c = await t.newContext({ viewport: { width: 375, height: 1260 } });
+  // Bölüm tek karede sığsın; genişlik gerçek telefon ölçüsü.
+  const c = await t.newContext({ viewport: { width: 375, height: 1000 } });
   const s = await c.newPage();
   await s.goto(B, { waitUntil: 'networkidle', timeout: 60000 });
   await s.waitForTimeout(1200);
@@ -63,10 +54,37 @@ try {
   });
   console.log('bölüm yüksekliği:', bilgi.h, 'px | kutular:', bilgi.kutu.join(', '));
 
-  console.log('görüntüler:', `${CIKTI}/telefon-dukkan-{serit,bolumu,ust}.png`);
   await c.close();
+
+  /* 1280px — masaüstünde kutu yerleşimi */
+  const c2 = await t.newContext({ viewport: { width: 1280, height: 800 } });
+  const s2 = await c2.newPage();
+  await s2.goto(B, { waitUntil: 'networkidle', timeout: 60000 });
+  await s2.waitForTimeout(1200);
+  await s2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await s2.waitForTimeout(1500);
+  let ust2 = null;
+  for (let i = 0; i < 8; i++) {
+    await s2.evaluate(() => {
+      const b = document.getElementById('dukkan').getBoundingClientRect().top + window.scrollY;
+      const h = document.querySelector('.baslik').getBoundingClientRect().height;
+      window.scrollTo(0, b - h - 8);
+    });
+    await s2.waitForTimeout(600);
+    ust2 = await s2.evaluate(() => Math.round(document.getElementById('dukkan').getBoundingClientRect().top));
+    if (ust2 >= 0 && ust2 <= 140) break;
+  }
+  console.log('1280px bolum ust kenari:', ust2);
+  await s2.screenshot({ path: `${CIKTI}/masaustu-dukkan-bolumu.png` });
+  const yer = await s2.evaluate(() => [...document.querySelectorAll('.dukkan-kutu')].map((x) => {
+    const b = x.getBoundingClientRect();
+    return `${x.querySelector('h3').textContent}: ${Math.round(b.width)}px @ x=${Math.round(b.left)}`;
+  }));
+  console.log('1280px kutular:', yer.join(' | '));
+  await c2.close();
+  console.log('görüntüler:', `${CIKTI}/{telefon,masaustu}-dukkan-*.png`);
 } finally {
   writeFileSync(VERI, OZGUN);
-  console.log(readFileSync(VERI).equals(OZGUN) ? 'dukkan.json geri kondu' : 'GERİ KONAMADI');
+  console.log(readFileSync(VERI).equals(OZGUN) ? 'dukkan.json dokunulmadi' : 'DOSYA DEGISTI');
   await t.close();
 }

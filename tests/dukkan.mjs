@@ -18,6 +18,15 @@ const bolum = (t) => console.log(`\n${'═'.repeat(62)}\n${t}\n${'═'.repeat(62
 const OZGUN = readFileSync(VERI);
 const yaz = (o) => writeFileSync(VERI, JSON.stringify(o, null, 2), 'utf8');
 const oku = () => { const v = JSON.parse(OZGUN.toString('utf8')); v.dolduruldu = true; return v; };
+/* Bayrak senaryosu özgün dosyaya bağlı olmamalı: dosya artık gerçek
+   bilgilerle dolu ve dolduruldu:true. Kapalı hâli açıkça kuruyoruz. */
+const okuKapali = () => {
+  const v = JSON.parse(OZGUN.toString('utf8'));
+  v.dolduruldu = false;
+  v.ad = 'DOLDURULACAK — dükkânın tam adı';
+  v.adres = { satir: 'DOLDURULACAK — cadde', ilce: 'DOLDURULACAK', il: 'DOLDURULACAK', haritaUrl: '' };
+  return v;
+};
 
 const KONTRAST = `(() => {
   const lum = (r) => { const [a,b,c] = r.match(/\\d+(\\.\\d+)?/g).slice(0,3).map(Number);
@@ -224,7 +233,7 @@ try {
 
   /* ═══════ 3e. dolduruldu:false — bayrak koruması ═══════ */
   bolum('3e — dolduruldu:false iken hiçbir şey gösterilmiyor');
-  writeFileSync(VERI, OZGUN);          // özgün dosya zaten false
+  yaz(okuKapali());
   {
     const c = await t.newContext({ viewport: { width: 375, height: 800 } });
     const s = await c.newPage();
@@ -266,12 +275,13 @@ try {
       catch (e) { return { kod: e.status, cikti: (e.stdout || '') + (e.stderr || '') }; }
     };
 
-    writeFileSync(VERI, OZGUN);
+    yaz(okuKapali());
     let r = calistir();
     const uy = r.cikti.split('\n').find((x) => /doldurulmad/i.test(x)) || '';
     (r.kod === 0 && uy) ? ok('dolduruldu:false → uyarı var, hata yok') : no(`kod ${r.kod}`);
 
-    yaz(oku());                                  // oku() bayrağı true yapıyor, kalıntılar duruyor
+    const kalintili = okuKapali(); kalintili.dolduruldu = true;   // bayrak açık, kalıntı duruyor
+    yaz(kalintili);
     r = calistir();
     const hs = r.cikti.split('\n').find((x) => /DOLDURULACAK/.test(x)) || '';
     (r.kod === 1 && hs) ? ok('kalıntı yakalandı, çıkış kodu 1') : no(`kod ${r.kod}: ${r.cikti.slice(-200)}`);

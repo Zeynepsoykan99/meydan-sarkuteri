@@ -28,9 +28,22 @@ window.Dukkan = (function () {
     .replace(/[ıîi̇]/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
     .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c').trim();
 
-  /** "Pazartesi – Cumartesi" → [1,2,3,4,5,6]; "Pazar" → [0]; liste de olur. */
+  // Toplu ifadeler: "Her gün" gibi yazımlar gün adı olmadığı için
+  // çözümlenemiyor ve saatler sessizce düşüyordu.
+  const TOPLU = {
+    hergun: [0, 1, 2, 3, 4, 5, 6],
+    'her gun': [0, 1, 2, 3, 4, 5, 6],
+    'hafta ici': [1, 2, 3, 4, 5],
+    haftaici: [1, 2, 3, 4, 5],
+    'hafta sonu': [6, 0],
+    haftasonu: [6, 0],
+  };
+
+  /** "Her gün" → [0..6]; "Pazartesi – Cumartesi" → [1..6]; "Pazar" → [0]. */
   function gunleriCoz(metin) {
     if (typeof metin !== 'string' || !metin.trim()) return [];
+    const toplu = TOPLU[sade(metin)];
+    if (toplu) return toplu.slice();
     const aralik = metin.split(/\s*[–—-]\s*/);
     if (aralik.length === 2) {
       const a = GUN_INDEKS[sade(aralik[0])], b = GUN_INDEKS[sade(aralik[1])];
@@ -59,14 +72,23 @@ window.Dukkan = (function () {
   const saatYazi = (dk) =>
     `${String(Math.floor(dk / 60)).padStart(2, '0')}:${String(dk % 60).padStart(2, '0')}`;
 
-  /* Saatin bulunma hâli eki: 08:00'de, 09:00'da, 13:00'te.
-     Saat 0–23 kapalı bir küme, tablo taşamaz. */
+  /* Saatin bulunma hâli eki: 08:00'de, 09:00'da, 07:30'da, 13:45'te.
+     Ek, SÖYLENEN son sayıya bakar: dakika sıfırsa saate ("sekizde"),
+     değilse dakikaya ("yedi otuzda", "on üç kırk beşte"). Sayılar
+     0–59 arası kapalı bir küme, tablo taşamaz. */
+  const BIRLER_EK = { 1: 'de', 2: 'de', 3: 'te', 4: 'te', 5: 'te',
+                      6: 'da', 7: 'de', 8: 'de', 9: 'da' };
+  const ONLAR_EK = { 1: 'da', 2: 'de', 3: 'da', 4: 'ta', 5: 'de' };  // on, yirmi, otuz, kırk, elli
+
+  function sayiEki(n) {
+    if (n === 0) return 'da';                 // sıfır
+    if (n % 10 === 0) return ONLAR_EK[n / 10] ?? 'da';
+    return BIRLER_EK[n % 10] ?? 'de';
+  }
+
   function saatEki(dk) {
-    const sa = Math.floor(dk / 60);
-    if (sa === 0 || sa === 10) return 'da';
-    if (sa === 20) return 'de';
-    return { 1: 'de', 2: 'de', 3: 'te', 4: 'te', 5: 'te',
-             6: 'da', 7: 'de', 8: 'de', 9: 'da' }[sa % 10] ?? 'de';
+    const sa = Math.floor(dk / 60), da = dk % 60;
+    return da === 0 ? sayiEki(sa) : sayiEki(da);
   }
 
   /** Kuralları güne göre aralıklara açar. Gece yarısını aşan saatler
@@ -193,7 +215,7 @@ window.Dukkan = (function () {
     }
     if (waAdres) {
       dugmeler.push(`<a class="serit-dugme serit-dugme-wa" href="${kacar(waAdres)}"
-        target="_blank" rel="noopener"><span aria-hidden="true">💬</span> WhatsApp</a>`);
+        target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span> WhatsApp</a>`);
     }
     if (dugmeler.length) parcalar.push(`<div class="serit-dugmeler">${dugmeler.join('')}</div>`);
 
@@ -213,7 +235,7 @@ window.Dukkan = (function () {
     const adresSatirlari = [a.satir, [a.ilce, a.il].filter(doluMu).join(' / ')].filter(doluMu);
     if (adresSatirlari.length) {
       const harita = doluMu(a.haritaUrl)
-        ? `<a class="dukkan-baglanti" href="${kacar(a.haritaUrl)}" target="_blank" rel="noopener">
+        ? `<a class="dukkan-baglanti" href="${kacar(a.haritaUrl)}" target="_blank" rel="noopener noreferrer">
              Haritada göster <span aria-hidden="true">↗</span></a>` : '';
       kutular.push(`
         <div class="dukkan-kutu">
@@ -258,7 +280,7 @@ window.Dukkan = (function () {
       }
       if (waAdres) {
         satirlar.push(`<a class="dukkan-dugme dukkan-dugme-wa" href="${kacar(waAdres)}"
-          target="_blank" rel="noopener"><span aria-hidden="true">💬</span> WhatsApp'tan yaz</a>`);
+          target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span> WhatsApp'tan yaz</a>`);
       }
       kutular.push(`
         <div class="dukkan-kutu">
@@ -360,5 +382,5 @@ window.Dukkan = (function () {
   }
 
   // Sınama için: saat hesabı saf, dışarıdan tarih verilebiliyor
-  return { durumHesapla, gunleriCoz, dakikaya, whatsappAdresi, telAdresi, istanbulZamani };
+  return { durumHesapla, gunleriCoz, dakikaya, saatEki, whatsappAdresi, telAdresi, istanbulZamani };
 })();
