@@ -289,6 +289,82 @@ export function dosyalarariDenetle(veri) {
 }
 
 /* =====================================================================
+   Dükkân bilgileri — data/dukkan.json
+
+   Bu dosyanın örnek saatleri ÇALIŞIR değerler taşıyor: bayrak açılmadan
+   yayına giderse ziyaretçi yanlış saat görür ve hiçbir yerde
+   "DOLDURULACAK" yazmaz. Bayrak açıkken içeride kalıntı bırakılmadığını
+   burada denetliyoruz.
+   ===================================================================== */
+
+export function dukkanDenetle(veri) {
+  const hatalar = [];
+  const uyarilar = [];
+
+  if (!veri || typeof veri !== 'object') {
+    return { hatalar: ['dukkan.json okunamadı ya da nesne değil'], uyarilar };
+  }
+
+  if (veri.dolduruldu !== true) {
+    uyarilar.push('dukkan.json henüz doldurulmadı (dolduruldu:false) — ' +
+                  'dükkân bilgileri ziyaretçiye gösterilmiyor');
+    return { hatalar, uyarilar };
+  }
+
+  // Bayrak açık: artık hiçbir yerde kalıntı kalmamalı
+  const kalintilar = [];
+  const gez = (deger, yol) => {
+    if (typeof deger === 'string') {
+      if (/DOLDURULACAK/i.test(deger)) kalintilar.push(yol);
+    } else if (Array.isArray(deger)) {
+      deger.forEach((x, i) => gez(x, `${yol}[${i}]`));
+    } else if (deger && typeof deger === 'object') {
+      for (const [k, v] of Object.entries(deger)) {
+        if (k.startsWith('_')) continue;          // açıklama alanları
+        gez(v, yol ? `${yol}.${k}` : k);
+      }
+    }
+  };
+  gez(veri, '');
+  if (kalintilar.length) {
+    hatalar.push(`dolduruldu:true ama "DOLDURULACAK" kalmış: ${kalintilar.join(', ')}`);
+  }
+
+  const dolu = (v) => typeof v === 'string' && v.trim() !== '';
+  const a = veri.adres || {};
+  if (!dolu(a.satir)) hatalar.push('adres.satir boş');
+  if (!dolu(a.ilce) && !dolu(a.il)) hatalar.push('adres.ilce ve adres.il ikisi de boş');
+  if (!dolu(veri.ad)) hatalar.push('ad boş');
+
+  const tel = (veri.iletisim || {}).telefon;
+  if (!dolu(tel)) hatalar.push('iletisim.telefon boş');
+  else if (String(tel).replace(/\D/g, '').length < 10) {
+    hatalar.push(`iletisim.telefon çok kısa: "${tel}"`);
+  }
+
+  const wa = (veri.iletisim || {}).whatsapp;
+  if (dolu(wa) && String(wa).replace(/\D/g, '').length < 10) {
+    hatalar.push(`iletisim.whatsapp çok kısa: "${wa}"`);
+  }
+  if (!dolu(wa)) uyarilar.push('iletisim.whatsapp boş — WhatsApp düğmesi çıkmayacak');
+  if (!dolu(a.haritaUrl)) uyarilar.push('adres.haritaUrl boş — harita bağlantısı çıkmayacak');
+
+  const saatler = Array.isArray(veri.saatler) ? veri.saatler : [];
+  if (!saatler.length) {
+    uyarilar.push('saatler boş — açık/kapalı göstergesi çıkmayacak');
+  } else {
+    saatler.forEach((k, i) => {
+      const bicim = /^\d{1,2}:\d{2}$/;
+      if (!dolu(k && k.gunler)) hatalar.push(`saatler[${i}].gunler boş`);
+      if (!bicim.test(String(k && k.acilis))) hatalar.push(`saatler[${i}].acilis biçimi bozuk: "${k && k.acilis}"`);
+      if (!bicim.test(String(k && k.kapanis))) hatalar.push(`saatler[${i}].kapanis biçimi bozuk: "${k && k.kapanis}"`);
+    });
+  }
+
+  return { hatalar, uyarilar };
+}
+
+/* =====================================================================
    Betik olarak çalıştırıldığında
    ===================================================================== */
 
@@ -328,6 +404,18 @@ if (dogrudanCalisiyor) {
 
   // Dosya kontrolleri yalnızca yerel dosyayı denetlerken anlamlı
   if (!apiArg && ozet) hatalar.push(...dosyalarariDenetle(veri));
+
+  // Dükkân bilgileri ayrı bir dosya; katalog API'den okunsa bile denetlenir
+  let dukkanKaynak = 'data/dukkan.json';
+  try {
+    const d = JSON.parse(readFileSync(join(KOK, 'data/dukkan.json'), 'utf8'));
+    const s = dukkanDenetle(d);
+    hatalar.push(...s.hatalar.map((h) => `dukkan.json: ${h}`));
+    uyarilar.push(...s.uyarilar.map((u) => `dukkan.json: ${u}`));
+  } catch (e) {
+    uyarilar.push(`dukkan.json okunamadı (${e.message}) — dükkân bölümü çıkmayacak`);
+    dukkanKaynak = null;
+  }
 
   console.log('Meydan Şarküteri — veri kontrolü');
   console.log(`kaynak: ${kaynakAdi}`);

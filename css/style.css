@@ -745,3 +745,130 @@ button { cursor: pointer; }
   }
   .kart:hover { transform: none; }
 }
+
+/* =====================================================================
+   Dükkân bilgileri — üstteki hızlı erişim şeridi ve alttaki bölüm.
+   İçerik data/dukkan.json'dan geliyor; eksik alanlar hiç çizilmiyor.
+   ===================================================================== */
+
+/* ---------- Üstteki şerit ----------
+   Tek satır: durum + telefon + WhatsApp. Dar ekranda alt alta iniyor
+   ama yine iki satırı geçmiyor. */
+.dukkan-serit {
+  background: var(--murekkep);
+  color: var(--beyaz);
+}
+.serit-ic {
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 10px 18px;
+  padding: 10px 0;
+}
+.serit-durum {
+  display: flex; align-items: center; gap: 9px;
+  margin: 0; font-size: 15px;
+}
+.serit-durum strong { font-weight: 700; }
+.serit-ayrinti { color: rgba(255, 255, 255, .72); }
+
+.durum-nokta {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--murekkep-soluk); flex: 0 0 auto;
+}
+.acik .durum-nokta   { background: #3FBF6A; box-shadow: 0 0 0 3px rgba(63, 191, 106, .25); }
+.kapali .durum-nokta { background: var(--sari); box-shadow: 0 0 0 3px rgba(255, 206, 0, .2); }
+
+.serit-dugmeler { display: flex; gap: 8px; }
+.serit-dugme {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 8px 16px;
+  border: 1.5px solid rgba(255, 255, 255, .3); border-radius: 999px;
+  color: var(--beyaz); text-decoration: none;
+  font-size: 14.5px; font-weight: 700; white-space: nowrap;
+  transition: background .14s, border-color .14s;
+}
+.serit-dugme:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .55); }
+.serit-dugme:focus-visible { outline: 3px solid var(--sari); outline-offset: 2px; }
+/* Beyaz metinle 5,07:1 (ölçüldü). #1F9E52 3,46:1 kalıyordu, AA altı. */
+.serit-dugme-wa { background: #157F41; border-color: #157F41; }
+.serit-dugme-wa:hover { background: #0F5F31; border-color: #0F5F31; }
+
+/* ---------- Alttaki bölüm ---------- */
+.dukkan { padding: 64px 0 72px; background: var(--beyaz); border-top: 1px solid var(--cizgi); }
+
+.dukkan-izgara {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 28px;
+}
+.dukkan-kutu {
+  padding: 20px;
+  background: var(--tezgah);
+  border: 1.5px solid var(--cizgi); border-radius: var(--r-buyuk);
+}
+.dukkan-kutu h3 {
+  font-size: 13px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--murekkep-soluk);
+  margin-bottom: 12px;
+}
+.dukkan-adres { font-size: 16px; line-height: 1.55; }
+.dukkan-ikincil { margin-top: 8px; color: var(--murekkep-soluk); font-size: 14.5px; }
+.dukkan-kutu p + p { margin-top: 8px; }
+
+.dukkan-baglanti {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; margin-top: 6px;
+  color: var(--kirmizi); font-weight: 700; font-size: 15px;
+  text-decoration: none; border-bottom: 2px solid transparent;
+}
+.dukkan-baglanti:hover { border-bottom-color: var(--kirmizi); }
+.dukkan-baglanti:focus-visible { outline: 3px solid var(--kirmizi); outline-offset: 3px; }
+
+.dukkan-durum {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  margin-bottom: 12px; font-size: 15px;
+}
+.dukkan-durum.acik strong   { color: #14713C; }
+.dukkan-durum.kapali strong { color: var(--kirmizi-koyu); }
+
+.saat-tablo { display: grid; gap: 2px; }
+.saat-satir {
+  display: flex; justify-content: space-between; gap: 14px;
+  padding: 9px 0; border-top: 1px solid var(--cizgi);
+  font-size: 15px;
+}
+.saat-satir:first-child { border-top: 0; }
+.saat-gun { color: var(--murekkep-soluk); }
+.saat-araligi { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.dukkan-dugmeler { display: grid; gap: 8px; }
+.dukkan-dugme {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 10px 18px;
+  background: var(--beyaz);
+  border: 1.5px solid var(--cizgi); border-radius: var(--r);
+  color: var(--murekkep); text-decoration: none;
+  font-size: 15.5px; font-weight: 700;
+  transition: border-color .14s, background .14s;
+}
+.dukkan-dugme:hover { border-color: var(--murekkep); }
+.dukkan-dugme:focus-visible { outline: 3px solid var(--kirmizi); outline-offset: 2px; }
+.dukkan-dugme-wa { background: #157F41; border-color: #157F41; color: var(--beyaz); }
+.dukkan-dugme-wa:hover { background: #0F5F31; border-color: #0F5F31; }
+
+.dukkan-odeme { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.odeme-etiket {
+  padding: 5px 11px; border-radius: 999px;
+  background: var(--beyaz); border: 1.5px solid var(--cizgi);
+  font-size: 13.5px; font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .dukkan { padding: 44px 0 52px; }
+  .serit-ic { justify-content: flex-start; }
+  .serit-dugmeler { flex: 1 1 auto; }
+  .serit-dugme { flex: 1 1 0; justify-content: center; }
+}
+
+/* Başlıktaki açılış bilgisi: saat ve adres alt alta. js/dukkan.js
+   ikinci satırı bu sınıfla yazıyor; ayraçsız bitişik yazılmasın. */
+.acilis-adres { display: block; }

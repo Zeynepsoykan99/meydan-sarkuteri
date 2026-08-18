@@ -170,6 +170,62 @@ tek dokunuşla geri alınabilir.
 Oturum sunucuda yoksa uçlar 401 döner; panel bunu yakalayınca hemen
 yönlendirmez, önce hangi işin kaydedilmediğini adıyla söyler.
 
+## Dükkân bilgileri
+
+`data/dukkan.json` — adres, çalışma saatleri, telefon, sipariş ve ödeme.
+Sayfada iki yere basılıyor: üstteki tek satırlık şerit (açık/kapalı +
+telefon + WhatsApp) ve katalogdan sonraki bölüm. Başlıktaki açılış
+bilgisi ile altbilgi de bu dosyadan tazeleniyor; iki yerde çelişen saat
+göstermemek için.
+
+**Veritabanında değil, dosyada.** Yılda bir kez değişiyor, panelden
+düzenlenmiyor, ve dosyada durunca veritabanı düştüğünde bile bu bölüm
+görünmeye devam ediyor.
+
+### dolduruldu bayrağı
+
+```json
+{ "dolduruldu": true, "ad": "Meydan Şarküteri", ... }
+```
+
+`false` iken bölüm de şerit de **hiç çizilmiyor**, başlık ve altbilgi
+`index.html`'de yazan yedek metinde kalıyor, konsola tek satır uyarı
+düşüyor. Sayfanın geri kalanı etkilenmiyor.
+
+Bayrak, dosyanın örnek değerlerle yayına kaçmasına karşı. Örnek saatler
+çalışır değerler taşıyor: bayrak olmasa doldurulmamış bir dosya
+ziyaretçiye **yanlış saat** gösterirdi ve hiçbir yerde "DOLDURULACAK"
+yazmazdı.
+
+### Bilgiler değişince
+
+1. `data/dukkan.json`'ı düzenle.
+2. `node scripts/veri-kontrol.js` — bayrak açıkken hiçbir alanda
+   "DOLDURULACAK" kalmadığını, ad/adres/telefonun dolu ve saat
+   biçimlerinin geçerli olduğunu denetler. Eksik varsa çıkış kodu 1.
+3. Adres ya da saat değiştiyse `index.html`'deki **yedek metinleri** de
+   güncelle: başlıktaki `.acilis` ve altbilgideki `.ayak-marka`. Bunlar
+   JS gelmeden ya da dosya okunamazsa görünen metinler, dosyayla
+   eşleşmeleri gerekiyor.
+4. `node tests/dukkan.mjs` (yerel sunucu ayaktayken).
+5. Commit'le ve push'la.
+
+### Alanlar
+
+| Alan | Boş bırakılırsa |
+| --- | --- |
+| `iletisim.telefon` | "Ara" düğmesi ve İletişim kutusu çıkmaz |
+| `iletisim.whatsapp` | WhatsApp düğmesi çıkmaz |
+| `adres.haritaUrl` | "Haritada göster" bağlantısı çıkmaz |
+| `saatler` | açık/kapalı göstergesi ve saat kutusu çıkmaz |
+| `siparis.var: false` + boş `odeme` | "Sipariş ve ödeme" kutusu tamamen kaybolur |
+
+`gunler` alanı gün adı (`Pazar`), aralık (`Pazartesi – Cumartesi`),
+liste (`Cumartesi, Pazar`) ya da toplu ifade (`Her gün`, `Hafta içi`,
+`Hafta sonu`) kabul eder. Gece yarısını aşan saatler (`22:00`–`02:00`)
+doğru hesaplanır. Açık/kapalı hesabı **Europe/Istanbul**'a sabit;
+ziyaretçinin cihaz saat dilimi dikkate alınmaz.
+
 ## Yedek
 
 ```
@@ -218,6 +274,9 @@ js/ortak.js              Ana site ile panelin ortak yardımcıları
 js/app.js                Veriyi getirir; filtre, arama, sıralama, birim fiyat, detay
 js/panel.js              Panel: liste, hızlı onay, düzenleme
 data/products.json       Katalog yedeği — 470 ürün, 13 reyon
+data/dukkan.json         Adres, saatler, iletişim (dolduruldu bayrağı)
+js/dukkan.js             Dükkân bölümü, açık/kapalı hesabı
+tests/                   Tarayıcı sınamaları (deploy'a girmez)
 api/katalog.js           GET /api/katalog — veritabanından okur
 api/giris.js             Giriş, çıkış, oturum durumu
 api/yonetici/            Korumalı uçlar: durum, urunler, urun
