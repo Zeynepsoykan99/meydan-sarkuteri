@@ -199,16 +199,28 @@ yazmazdı.
 
 ### Bilgiler değişince
 
+Bilgi **üç yerde** duruyor ve üçü elle eşleniyor. `veri-kontrol.js`
+uyuşmazlığı yakalar, ama düzeltmek sende:
+
+| Dosya | Ne var | Neden elle |
+| --- | --- | --- |
+| `data/dukkan.json` | asıl kaynak | siteyi bu besliyor |
+| `index.html` | `.acilis` ve `.ayak-marka` | JS gelmeden / dosya okunamazsa / `dolduruldu:false` iken görünen yedek metinler |
+| `afis.html` | `.afis-ust` ve `.afis-alt` | basılan afiş; JS'e bağlamak yazdırmayı kırılganlaştırırdı |
+
 1. `data/dukkan.json`'ı düzenle.
-2. `node scripts/veri-kontrol.js` — bayrak açıkken hiçbir alanda
-   "DOLDURULACAK" kalmadığını, ad/adres/telefonun dolu ve saat
-   biçimlerinin geçerli olduğunu denetler. Eksik varsa çıkış kodu 1.
-3. Adres ya da saat değiştiyse `index.html`'deki **yedek metinleri** de
-   güncelle: başlıktaki `.acilis` ve altbilgideki `.ayak-marka`. Bunlar
-   JS gelmeden ya da dosya okunamazsa görünen metinler, dosyayla
-   eşleşmeleri gerekiyor.
-4. `node tests/dukkan.mjs` (yerel sunucu ayaktayken).
-5. Commit'le ve push'la.
+2. Değişen bilgiye göre `index.html` ve `afis.html`'deki metinleri de
+   güncelle.
+3. `node scripts/veri-kontrol.js` — iki şeyi birden denetler:
+   bayrak açıkken hiçbir alanda "DOLDURULACAK" kalmadığını ve
+   ad/adres/telefon/saatin **üç dosyada da tutarlı** olduğunu.
+   Uyuşmazlıkta hangi dosyada ne yazması gerektiğini söyler ve
+   çıkış kodu 1 döner.
+4. **Adres, telefon ya da saat değiştiyse afişi yeniden bas.** Duvardaki
+   kâğıt kendiliğinden güncellenmiyor. QR'ı yeniden üretmek yalnızca
+   *site adresi* değişirse gerekir (aşağıda "Kapı afişi").
+5. `node tests/dukkan.mjs` (yerel sunucu ayaktayken).
+6. Commit'le ve push'la.
 
 ### Alanlar
 
