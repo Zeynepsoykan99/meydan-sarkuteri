@@ -297,10 +297,11 @@ try {
     r = calistir();
     (r.kod === 1 && /telefon boş/.test(r.cikti)) ? ok('boş telefon yakalandı') : no(`kod ${r.kod}`);
 
-    // veri-kontrol.js artık index.html'deki yedek metinle senkronu da
-    // denetliyor; "geçerli dosya" senaryosu gerçek adres/saati kullanmalı.
+    // veri-kontrol.js artık index.html VE afis.html'deki elle yazılmış
+    // metinlerle senkronu denetliyor; "geçerli dosya" senaryosu gerçek
+    // adres/saat/telefonu korumalı. WhatsApp sahte olabilir: afişte yok.
     const tam = oku();
-    tam.iletisim = { telefon: '+90 232 123 45 67', whatsapp: '+90 555 123 45 67' };
+    tam.iletisim = { ...tam.iletisim, whatsapp: '+90 555 123 45 67' };
     tam.adres.haritaUrl = 'https://maps.google.com/?q=test';
     yaz(tam);
     r = calistir();
