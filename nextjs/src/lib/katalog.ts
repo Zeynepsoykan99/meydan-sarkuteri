@@ -59,32 +59,17 @@ export async function katalogGetir(): Promise<Katalog> {
 
 /** Tek ürün — detay sayfası ve generateMetadata için. */
 export async function urunGetir(id: string): Promise<Urun | null> {
-  "use cache";
-  cacheLife("minutes");
-
-  const sql = sqlAl();
-  const satirlar = await sql`
-    SELECT id, ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim, stokta, kaynak
-    FROM urunler WHERE id = ${id}`;
-  const u = (satirlar as UrunSatiri[])[0];
-  return u ? urunuCevir(u) : null;
+  const { urunler } = await katalogGetir();
+  return urunler.find((u) => u.id === id) ?? null;
 }
 
 /** generateStaticParams için: yalnızca kimlikler. */
 export async function urunKimlikleri(): Promise<string[]> {
-  "use cache";
-  cacheLife("minutes");
-
-  const sql = sqlAl();
-  const satirlar = await sql`SELECT id FROM urunler ORDER BY id`;
-  return (satirlar as { id: string }[]).map((r) => r.id);
+  const { urunler } = await katalogGetir();
+  return urunler.map((u) => u.id);
 }
 
 export async function reyonAdiGetir(): Promise<Map<string, string>> {
-  "use cache";
-  cacheLife("minutes");
-
-  const sql = sqlAl();
-  const satirlar = await sql`SELECT id, ad FROM reyonlar`;
-  return new Map((satirlar as Reyon[]).map((r) => [r.id, r.ad]));
+  const { reyonlar } = await katalogGetir();
+  return new Map(reyonlar.map((r) => [r.id, r.ad]));
 }

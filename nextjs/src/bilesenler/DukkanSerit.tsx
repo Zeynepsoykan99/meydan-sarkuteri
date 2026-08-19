@@ -41,8 +41,8 @@ export default async function DukkanSerit() {
               <a
                 href={wa} target="_blank" rel="noopener noreferrer"
                 className="inline-flex min-h-11 items-center gap-[7px] whitespace-nowrap rounded-full
-                           border-[1.5px] border-[#157F41] bg-[#157F41] px-4 py-2 text-[14.5px]
-                           font-bold text-beyaz no-underline transition-colors hover:bg-[#0F5F31]
+                           border-[1.5px] border-yesil bg-yesil px-4 py-2 text-[14.5px]
+                           font-bold text-beyaz no-underline transition-colors hover:bg-yesil-koyu
                            max-[560px]:flex-1 max-[560px]:justify-center"
               >
                 <span aria-hidden="true">💬</span> WhatsApp

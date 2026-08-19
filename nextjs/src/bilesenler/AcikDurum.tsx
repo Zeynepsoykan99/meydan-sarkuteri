@@ -29,7 +29,7 @@ export default async function AcikDurum({ nerede }: { nerede: "serit" | "bolum" 
   return (
     <p className="mb-3 flex flex-wrap items-center gap-[9px] text-[15px]">
       <Nokta acik={durum.acik} />
-      <strong className={durum.acik ? "text-[#14713C]" : "text-kirmizi-koyu"}>
+      <strong className={durum.acik ? "text-yesil-metin" : "text-kirmizi-koyu"}>
         {durum.metin}
       </strong>
       {durum.ayrinti && <span className="text-murekkep-soluk">· {durum.ayrinti}</span>}
@@ -41,7 +41,7 @@ function Nokta({ acik, halka = false }: { acik: boolean; halka?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`size-[9px] shrink-0 rounded-full ${acik ? "bg-[#3FBF6A]" : "bg-sari"} ${
+      className={`size-[9px] shrink-0 rounded-full ${acik ? "bg-yesil-canli" : "bg-sari"} ${
         halka
           ? acik
             ? "shadow-[0_0_0_3px_rgb(63_191_106/0.25)]"

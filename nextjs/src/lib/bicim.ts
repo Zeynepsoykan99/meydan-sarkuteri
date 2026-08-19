@@ -93,3 +93,14 @@ export const sadelestir = (s: string) =>
     .replace(/[ıîi̇]/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
     .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
     .trim();
+
+/** Virgüllü veya noktalı kullanıcı girişini sayıya çevirir. */
+export function sayiyaCevir(girdi: unknown): number | null {
+  if (typeof girdi === "number") return isFinite(girdi) ? girdi : null;
+  if (typeof girdi !== "string") return null;
+  const t = girdi.trim().replace(/\s/g, "").replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  return isFinite(n) ? n : null;
+}
+

@@ -89,8 +89,8 @@ export default async function DukkanBolum() {
             <a
               href={wa} target="_blank" rel="noopener noreferrer"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-orta
-                         border-[1.5px] border-[#157F41] bg-[#157F41] px-[18px] py-2.5
-                         text-[15.5px] font-bold text-beyaz no-underline hover:bg-[#0F5F31]"
+                         border-[1.5px] border-yesil bg-yesil px-[18px] py-2.5
+                         text-[15.5px] font-bold text-beyaz no-underline hover:bg-yesil-koyu"
             >
               <span aria-hidden="true">💬</span> WhatsApp&apos;tan yaz
             </a>
