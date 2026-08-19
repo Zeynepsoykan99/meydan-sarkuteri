@@ -58,6 +58,7 @@ export async function parolaDogrula(parola: string, saklanan: string): Promise<b
       p: Number(sp),
     });
 
+    // Asla === kullanma: uzunluk farkı da içerik farkı da zamana sızar
     if (uretilen.length !== beklenen.length) return false;
     return timingSafeEqual(uretilen, beklenen);
   } catch {
@@ -155,6 +156,39 @@ export async function bakimYap() {
 export const PENCERE_DK = 15;
 export const SINIR = 5;
 
+/* X-Forwarded-For'un EN SOLDAKİ değerini okuyoruz.
+ *
+ * Genel kural olarak bu güvensizdir: çoğu proxy istemcinin gönderdiği
+ * başlığın sağına kendi gördüğü IP'yi ekler, dolayısıyla en soldaki
+ * değer istemcinin uydurduğu şey olur ve IP başına hız sınırı
+ * atlanabilir hale gelir.
+ *
+ * Vercel'de durum farklı: platform gelen X-Forwarded-For başlığını
+ * EZİYOR, listeye eklemiyor. 14 Ağustos 2026'da hem preview hem
+ * production üzerinde ölçüldü — her istekte farklı sahte bir
+ * X-Forwarded-For (1.2.3.1 … 1.2.3.10) gönderildi; fonksiyona her
+ * seferinde tek değer olarak gerçek istemci IP'si ulaştı, sahte
+ * değerlerin hiçbiri ne log'a ne giris_denemeleri tablosuna düştü,
+ * ve hız sınırı 6. denemede yine 429 verdi.
+ * x-real-ip ve x-vercel-forwarded-for da aynı gerçek IP'yi taşıyor.
+ *
+ * YEDEK KAYNAK DEĞİŞTİ — Next taşımasında. Kök projede yedek
+ * req.socket.remoteAddress idi: TCP bağlantısının kendi adresi, yani
+ * istemcinin UYDURAMAYACAĞI bir değer. App Router'da ham sokete erişim
+ * yok, bu yüzden yedek artık x-real-ip BAŞLIĞI. Aradaki fark güvenlik
+ * açısından önemli: x-real-ip de tıpkı x-forwarded-for gibi istemcinin
+ * kendi gönderebileceği sıradan bir başlık. Platform onu ezmiyorsa
+ * saldırgan her istekte farklı bir x-real-ip yollayarak IP başına hız
+ * sınırını tamamen atlayabilir. Bugün Vercel eziyor, o yüzden güvenli
+ * — ama güvenlik tümüyle platform davranışına bağlı, kodun kendi
+ * güvencesi değil.
+ *
+ * DİKKAT: Uygulama başka bir proxy arkasına taşınır ya da doğrudan
+ * internete açılırsa bu fonksiyon yeniden değerlendirilmeli — o durumda
+ * en SAĞDAKİ değeri almak ya da proxy'nin kendi ürettiği güvenilir
+ * başlığa geçmek gerekir. Yedeğin artık başlık olması, o senaryoda bu
+ * sürümü soket adresli özgün sürümden DAHA riskli yapıyor.
+ */
 export async function istemciIp(): Promise<string> {
   const h = await headers();
   const iletilen = h.get("x-forwarded-for");

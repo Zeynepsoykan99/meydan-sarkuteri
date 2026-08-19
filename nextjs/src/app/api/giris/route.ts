@@ -95,6 +95,20 @@ export async function POST(req: Request) {
     await denemeKaydet(ip, true);
 
     const cookieStore = await cookies();
+    /* secure NEDEN KOŞULLU (bu koşulun gerekçesi cikis ve sifre-degistir
+       uçları için de geçerli):
+       Secure işaretli çerez yalnızca HTTPS üzerinden yazılır. Yerel
+       geliştirme http://localhost üzerinden gittiği için koşulsuz Secure
+       yazsaydık tarayıcı çerezi hiç saklamaz, yerelde giriş yapmak
+       imkânsız olurdu. Kök projede bu sorun yoktu: orası yalnızca
+       Vercel'de çalışıyordu, o yüzden koşulsuz "Secure" yazabiliyordu.
+
+       RİSK: koruma artık NODE_ENV'in doğruluğuna bağlı. NODE_ENV
+       "production" dışında bir değerle üretime çıkılırsa oturum çerezi
+       düz HTTP üzerinden de gider; ağı dinleyen biri jetonu okuyup
+       oturumu devralabilir. next build + next start bu değeri kendisi
+       "production" yapar, dolayısıyla normal dağıtımda güvenlidir —
+       ama NODE_ENV'i elle ayarlayan bir dağıtım bu güvenceyi kırar. */
     cookieStore.set(CEREZ_ADI, jeton, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

@@ -16,6 +16,10 @@ export async function POST() {
     }
   }
 
+  /* secure koşullu — yerelde giriş yapılabilsin diye; gerekçesi ve riski
+     api/giris/route.ts'te ayrıntılı yazılı. Silme çerezinin bayrakları
+     yazma çerezininkiyle birebir aynı olmalı, yoksa tarayıcı bunu farklı
+     bir çerez sayar ve oturum çerezi silinmeden kalır. */
   cookieStore.set(CEREZ_ADI, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

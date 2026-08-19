@@ -103,6 +103,10 @@ export async function POST(req: Request) {
         { status: 400, headers: { "Cache-Control": "no-store" } }
       );
     }
+    /* Buradaki === bilinçli ve güvenli: iki taraf da aynı istekten gelen
+       düz metin, saklanan bir sır değil — sızacak bilgi yok. Saklanan
+       parola hash'iyle karşılaştırma ASLA === ile yapılmaz, timingSafeEqual
+       ile yapılır; gerekçesi lib/auth.ts'teki parolaDogrula'da. */
     if (yeniSifre === mevcutSifre) {
       return NextResponse.json(
         { hata: "Yeni şifre mevcut şifreyle aynı olamaz" },
@@ -124,6 +128,8 @@ export async function POST(req: Request) {
     await denemeKaydet(ip, true);
 
     const cookieStore = await cookies();
+    /* secure koşullu — yerelde giriş yapılabilsin diye; gerekçesi ve riski
+       api/giris/route.ts'te ayrıntılı yazılı. */
     cookieStore.set(CEREZ_ADI, jeton, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
