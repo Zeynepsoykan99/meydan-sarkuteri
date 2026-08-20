@@ -10,13 +10,19 @@ import { createContext, useContext, useMemo, useState } from "react";
 type Durum = {
   arama: string;
   aramaYaz: (v: string) => void;
+  /* Reyon seçimi de burada: şerit yapışkan başlıkta, katalog ise sayfada.
+     İkisi ayrı ağaçlarda olduğu için seçim ancak bağlamla paylaşılabiliyor. */
+  reyon: string;
+  reyonYaz: (v: string) => void;
 };
 
 const Baglam = createContext<Durum | null>(null);
 
 export function KatalogDurumProvider({ children }: { children: React.ReactNode }) {
   const [arama, aramaYaz] = useState("");
-  const deger = useMemo(() => ({ arama, aramaYaz }), [arama]);
+  const [reyon, reyonYaz] = useState("hepsi");
+  const deger = useMemo(
+    () => ({ arama, aramaYaz, reyon, reyonYaz }), [arama, reyon]);
   return <Baglam.Provider value={deger}>{children}</Baglam.Provider>;
 }
 

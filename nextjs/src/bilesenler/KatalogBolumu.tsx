@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Reyon, Urun } from "@/lib/tipler";
-import { birimFiyat, indirimYuzde, sadelestir } from "@/lib/bicim";
+import type { KartVerisi, Reyon } from "@/lib/tipler";
+import { indirimYuzde, sadelestir } from "@/lib/bicim";
 import UrunKarti from "./UrunKarti";
 import { katalogDurumu } from "./KatalogDurumu";
 
@@ -17,11 +17,11 @@ type Siralama = "onerilen" | "ucuz" | "pahali" | "birim" | "indirim" | "isim";
 export default function KatalogBolumu({
   urunler, reyonlar,
 }: {
-  urunler: Urun[];
+  urunler: KartVerisi[];
   reyonlar: Reyon[];
 }) {
-  const { arama } = katalogDurumu();
-  const [reyon, setReyon] = useState<string>("hepsi");
+  /* reyon artık bağlamdan: şerit yapışkan başlıkta duruyor, burada değil. */
+  const { arama, reyon, reyonYaz } = katalogDurumu();
   const [siralama, setSiralama] = useState<Siralama>("onerilen");
   const [indirimli, setIndirimli] = useState(false);
   const [enAz, setEnAz] = useState("");
@@ -34,12 +34,6 @@ export default function KatalogBolumu({
   const dizin = useMemo(
     () => new Map(urunler.map((u) => [u.id, sadelestir(`${u.ad} ${reyonAdlari.get(u.reyon) ?? ""}`)])),
     [urunler, reyonAdlari]);
-
-  const reyonSayilari = useMemo(() => {
-    const s = new Map<string, number>();
-    for (const u of urunler) s.set(u.reyon, (s.get(u.reyon) ?? 0) + 1);
-    return s;
-  }, [urunler]);
 
   const liste = useMemo(() => {
     const kelimeler = sadelestir(arama).split(/\s+/).filter(Boolean);
@@ -55,19 +49,12 @@ export default function KatalogBolumu({
       return kelimeler.every((k) => metin.includes(k));
     });
 
-    const bfDeger = (u: Urun) => birimFiyat(u)?.deger ?? Infinity;
-    const bfGrup = (u: Urun) => {
-      const bf = birimFiyat(u);
-      if (!bf) return 2;
-      return bf.birim === "adet" ? 1 : 0;
-    };
-
-    const kural: Record<Siralama, (a: Urun, b: Urun) => number> = {
+    const kural: Record<Siralama, (a: KartVerisi, b: KartVerisi) => number> = {
       onerilen: () => 0,
       ucuz: (a, b) => a.fiyat - b.fiyat,
       pahali: (a, b) => b.fiyat - a.fiyat,
       // Önce ağırlık/hacim (kıyaslanabilir), sonra adet, en sonda birimsizler
-      birim: (a, b) => bfGrup(a) - bfGrup(b) || bfDeger(a) - bfDeger(b),
+      birim: (a, b) => a.bfGrup - b.bfGrup || a.bfDeger - b.bfDeger,
       // Eşit indirim oranında ucuz olan önce — yoksa sıra rastgele kalıyor
       indirim: (a, b) => indirimYuzde(b) - indirimYuzde(a) || a.fiyat - b.fiyat,
       isim: (a, b) => a.ad.localeCompare(b.ad, "tr"),
@@ -77,8 +64,8 @@ export default function KatalogBolumu({
        Tezgâhta olmayan ürünün listenin başında durması, ziyaretçiye
        alamayacağı şeyi öneriyor. Sort kararlı olduğu için "onerilen"de
        geri kalanların veri sırası korunuyor. */
-    const stokSonra = (a: Urun, b: Urun) =>
-      Number(a.stokta === false) - Number(b.stokta === false);
+    const stokSonra = (a: KartVerisi, b: KartVerisi) =>
+      Number(!a.stokta) - Number(!b.stokta);
 
     return [...suzulmus].sort((a, b) => stokSonra(a, b) || kural[siralama](a, b));
   }, [urunler, dizin, arama, reyon, indirimli, enAz, enCok, siralama]);
@@ -88,24 +75,6 @@ export default function KatalogBolumu({
   return (
     <section className="katalog scroll-mt-baslik py-11 md:py-16" id="katalog">
       <div className="kucak">
-        {/* Reyon şeridi */}
-        <nav aria-label="Reyonlar" className="mb-6 -mx-5 overflow-x-auto px-5">
-          <div className="flex gap-2">
-            <button type="button" className="reyon" aria-pressed={reyon === "hepsi"}
-                    onClick={() => setReyon("hepsi")}>
-              <span aria-hidden="true">🧺</span> Tüm reyonlar
-              <span className="reyon-adet">{urunler.length}</span>
-            </button>
-            {reyonlar.map((r) => (
-              <button key={r.id} type="button" className="reyon" aria-pressed={reyon === r.id}
-                      onClick={() => setReyon(r.id)}>
-                {r.ikon && <span aria-hidden="true">{r.ikon}</span>} {r.ad}
-                <span className="reyon-adet">{reyonSayilari.get(r.id) ?? 0}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-[clamp(26px,4vw,36px)]">
@@ -173,7 +142,7 @@ export default function KatalogBolumu({
             </p>
             <button
               type="button"
-              onClick={() => { setReyon("hepsi"); setIndirimli(false); setEnAz(""); setEnCok(""); }}
+              onClick={() => { reyonYaz("hepsi"); setIndirimli(false); setEnAz(""); setEnCok(""); }}
               className="dugme dugme-dolu mt-5"
             >
               Filtreleri sıfırla
