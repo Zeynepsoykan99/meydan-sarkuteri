@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prebuild üretimi: depo kökündeki data/dukkan.json'un kopyası.
+# Kaynak tek yerde kalsın diye depoya girmiyor (bkz. scripts/db-isit.mjs).
+/data/

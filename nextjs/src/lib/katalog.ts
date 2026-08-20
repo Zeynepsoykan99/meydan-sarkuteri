@@ -11,7 +11,25 @@ import type { Katalog, Reyon, Urun } from "./tipler";
    birebir karşılığı. Sahibi panelden fiyat güncellediğinde en geç bir
    dakikada yansıyor. Elle Cache-Control yazmıyoruz — Next 16'nın Cache
    Components modeli bunu yönetiyor.
+
+   DERLEMEDEKİ KAYNAK DEĞİŞİKLİĞİ:
+   'use cache' doldurma bütçesi sabit 50 saniye (use-cache-wrapper.js:520).
+   Neon boştayken uyanma ~45 sn sürebiliyor ve bu maliyet doğrudan bütçenin
+   içinde ödeniyordu — derleme rastgele çöküyordu (ILERLEME.md §14).
+   db-isit.mjs ısıtma eklendi ama ısıtmadan sonra bile 49-51 sn gözlendi:
+   askıda kalan bir 'use cache' doldurma işi var, giyotine çarpıyor.
+
+   ÇÖZÜM: Derleme sırasında (NEXT_PHASE === 'phase-production-build')
+   veritabanına HİÇ dokunmuyoruz. Prebuild betiğinin zaten ürettiği
+   katalog-anlik.json'u okuyoruz. Böylece derleme süresi DB durumundan
+   tamamen bağımsız hale geliyor.
+
+   Çalışma zamanında (revalidate sonrası) her şey eskisi gibi: canlı
+   veritabanından sorgu yapılıyor, düşerse yedeğe düşülüyor.
    ===================================================================== */
+
+/** Derleme mi çalışma zamanı mı? */
+const derlemeMi = process.env.NEXT_PHASE === "phase-production-build";
 
 /** numeric sütunlar sürücüden metin gelir; JSON'daki gibi sayı olmalı */
 const sayi = (v: unknown): number | null =>
@@ -37,10 +55,27 @@ const urunuCevir = (u: UrunSatiri): Urun => ({
   stokta: u.stokta,
 });
 
+/** Anlık görüntüden oku — derleme zamanı veya veritabanı düşüşü. */
+function anlikOku(yedekMi = false): Katalog {
+  return {
+    guncellendi: anlik.guncellendi,
+    reyonlar: anlik.reyonlar as Reyon[],
+    urunler: anlik.urunler as Urun[],
+    ...(yedekMi ? { yedekMi: true } : {}),
+  };
+}
+
 export async function katalogGetir(): Promise<Katalog> {
   "use cache";
   cacheLife("minutes");
 
+  /* DERLEME ZAMANI: DB'ye dokunma, prebuild'in ürettiği kopyayı kullan.
+     Bu blok 50 sn bütçesini HİÇ zorlamaz — disk okuması ~1 ms. */
+  if (derlemeMi) {
+    return anlikOku();
+  }
+
+  /* ÇALIŞMA ZAMANI: canlı veritabanından oku. */
   try {
     const sql = sqlAl();
     const [reyonlar, urunler, damga] = await Promise.all([
@@ -64,12 +99,7 @@ export async function katalogGetir(): Promise<Katalog> {
        veri olduğu ve TARİHİ söyleniyor: tarihsiz bir "güncel olmayabilir"
        uyarısında bir günlük veri ile bir aylık veri aynı görünüyor. */
     console.error("katalog: veritabanı okunamadı, yedeğe düşülüyor:", (e as Error).message);
-    return {
-      guncellendi: anlik.guncellendi,
-      reyonlar: anlik.reyonlar as Reyon[],
-      urunler: anlik.urunler as Urun[],
-      yedekMi: true,
-    };
+    return anlikOku(true);
   }
 }
 

@@ -8,18 +8,29 @@ import type { Dukkan } from "./tipler";
 
 export * from "./saat";
 
-/** data/dukkan.json depo kökünde; Next uygulaması nextjs/ altında. */
+/** data/dukkan.json — Vercel'de kök nextjs/ olduğunda dosya nextjs/data/
+ *  altında duruyor (prebuild kopyalıyor). Yerelde iki yolu da deniyor. */
 export async function dukkanGetir(): Promise<Dukkan | null> {
   "use cache";
   cacheLife("minutes");
 
-  try {
-    const yol = join(process.cwd(), "..", "data", "dukkan.json");
-    const veri = JSON.parse(await readFile(yol, "utf8")) as Dukkan;
-    if (!veri || typeof veri !== "object") return null;
-    if (veri.dolduruldu !== true) return null;   // bayrak kapalı: hiç gösterme
-    return veri;
-  } catch {
-    return null;   // dosya yok ya da bozuk: bölüm hiç çıkmaz
+  /* Önce nextjs/data/ — Vercel production'da bu çalışır.
+     Yoksa eski ../data/ yolu — yerel geliştirme ve mevcut yapı. */
+  const yollar = [
+    join(process.cwd(), "data", "dukkan.json"),
+    join(process.cwd(), "..", "data", "dukkan.json"),
+  ];
+
+  for (const yol of yollar) {
+    try {
+      const veri = JSON.parse(await readFile(yol, "utf8")) as Dukkan;
+      if (!veri || typeof veri !== "object") continue;
+      if (veri.dolduruldu !== true) return null;   // bayrak kapalı: hiç gösterme
+      return veri;
+    } catch {
+      continue;   // bu yol yoksa sonraki dene
+    }
   }
+  return null;   // hiçbir yolda bulunamadı: bölüm çıkmaz
 }
+

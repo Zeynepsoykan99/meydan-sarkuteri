@@ -31,7 +31,7 @@
    ikinci bir hata biçimi üretmenin faydası yok.
    ===================================================================== */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 // @next/env CommonJS: adlandırılmış dışa aktarım yok, varsayılandan alınıyor
 import nextEnv from "@next/env";
@@ -40,11 +40,30 @@ const { loadEnvConfig } = nextEnv;
 const DENEME = 5;
 const TOPLAM_SINIR_MS = 120_000;
 
+/* data/dukkan.json — depo kökünde duruyor. Vercel'de root nextjs/ olunca
+   üst dizine erişim güvenilmez; bu yüzden prebuild'de nextjs/data/ altına
+   kopyalıyoruz. İki sürüm aynı dosyayı paylaşmaya devam ediyor. */
+function dukkanKopyala() {
+  const kaynak = new URL("../../data/dukkan.json", import.meta.url);
+  const hedefDir = new URL("../data/", import.meta.url);
+  const hedef = new URL("../data/dukkan.json", import.meta.url);
+  try {
+    if (!existsSync(hedefDir)) mkdirSync(hedefDir, { recursive: true });
+    copyFileSync(kaynak, hedef);
+    console.log("db-isit: data/dukkan.json → nextjs/data/dukkan.json kopyalandı");
+  } catch (e) {
+    console.log(`db-isit: dukkan.json kopyalanamadı (${e.message}) — sorun değil, eski yol denenecek`);
+  }
+}
+
 /* Bu betik Next'ten ÖNCE çalıştığı için .env.local henüz yüklü değil.
    Next'in kendi yükleyicisini kullanıyoruz ki dosya sırası ve öncelik
    kuralları derlemedekiyle birebir aynı olsun. Vercel'de değişken zaten
    ortamda tanımlı; orada bu çağrı bir şeyi bozmuyor. */
 loadEnvConfig(process.cwd(), false);
+
+/* Dükkân bilgisini nextjs/data/ altına kopyala (Vercel uyumluluğu). */
+dukkanKopyala();
 
 const adres = process.env.DATABASE_URL;
 if (!adres) {

@@ -55,6 +55,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  async redirects() {
+    return [
+      { source: "/index.html", destination: "/", permanent: true },
+      { source: "/giris.html", destination: "/giris", permanent: true },
+      { source: "/panel.html", destination: "/panel", permanent: true },
+      { source: "/afis.html", destination: "/afis", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
