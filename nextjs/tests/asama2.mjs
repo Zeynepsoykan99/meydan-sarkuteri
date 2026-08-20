@@ -116,5 +116,58 @@ bolum("4 — /urun/[id] durum kodları (500 regresyonu nöbeti)");
     : no("404 gövdesi beklenen not-found içeriğini taşımıyor");
 }
 
+/* ═══════ 5. Güvenlik başlıkları ═══════ */
+bolum("5 — Güvenlik başlıkları");
+{
+  const y = await fetch(B + "/");
+  const bekle = {
+    "content-security-policy": "frame-ancestors 'none'",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "geolocation=()",
+  };
+  for (const [ad, parca] of Object.entries(bekle)) {
+    const v = y.headers.get(ad);
+    v && v.includes(parca)
+      ? ok(`${ad} var ve "${parca}" içeriyor`)
+      : no(`${ad}: ${v ?? "YOK"}`);
+  }
+  const api = await fetch(B + "/api/oturum");
+  api.headers.get("x-content-type-options") === "nosniff"
+    ? ok("API uçlarına da uygulanıyor")
+    : no("API ucunda başlık yok");
+}
+
+/* ═══════ 6. sayiyaCevir: null / NaN ayrımı ═══════ */
+bolum("6 — sayiyaCevir üç sonucu ayırt ediyor mu (sessiz veri kaybı nöbeti)");
+{
+  /* GERİLEME NÖBETİ. Bu fonksiyon bir ara geçersiz girdide null döndürüyordu.
+     null "alan boş" demek olduğu için panel geçersiz fiyatı sessizce yok
+     sayıyor, miktarı ise null'a çekip ürünün ÖLÇÜSÜNÜ SİLİYORDU. */
+  const { sayiyaCevir } = await import("../src/lib/bicim.ts");
+
+  const bos = [["", null], ["   ", null]];
+  const gecersiz = ["abc", "₺39,50", "39,50 TL", "-5", "1e5", "0x10", "+7", "1.2.3", "5-"];
+  const gecerli = [["39,5", 39.5], ["  12 ", 12], ["0.01", 0.01], ["7", 7]];
+
+  for (const [girdi, beklenen] of bos) {
+    sayiyaCevir(girdi) === beklenen
+      ? ok(`boş girdi ${JSON.stringify(girdi)} → null ("dokunulmadı")`)
+      : no(`${JSON.stringify(girdi)} → ${sayiyaCevir(girdi)}, null bekleniyordu`);
+  }
+  for (const girdi of gecersiz) {
+    const s = sayiyaCevir(girdi);
+    Number.isNaN(s)
+      ? ok(`geçersiz ${JSON.stringify(girdi)} → NaN (null DEĞİL)`)
+      : no(`${JSON.stringify(girdi)} → ${s}, NaN bekleniyordu — sessiz veri kaybı riski`);
+  }
+  for (const [girdi, beklenen] of gecerli) {
+    sayiyaCevir(girdi) === beklenen
+      ? ok(`geçerli ${JSON.stringify(girdi)} → ${beklenen}`)
+      : no(`${JSON.stringify(girdi)} → ${sayiyaCevir(girdi)}, ${beklenen} bekleniyordu`);
+  }
+}
+
 console.log(`\n${"═".repeat(62)}\nAŞAMA 2 SONUÇ: ${g} geçti, ${k} kaldı`);
 process.exit(k === 0 ? 0 : 1);

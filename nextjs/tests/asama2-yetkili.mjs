@@ -116,6 +116,8 @@ const parola = geciciSifreUret();
 let kopya = null;
 let fiyatGecmisiTaban = 0;
 let hesapAcildi = false;
+/** Sınama başlarken ölçülen durum — sonda buna dönülmüş olmalı. */
+let taban = null;
 
 try {
   bolum("0 — Hazırlık: kopya, geçici hesap");
@@ -130,6 +132,28 @@ try {
 
   const [{ enSon }] = await sql`SELECT COALESCE(max(id), 0)::int AS "enSon" FROM fiyat_gecmisi`;
   fiyatGecmisiTaban = enSon;
+
+  /* Son durum denetimi SABİT sayılara değil, sınama BAŞLARKEN ölçülen
+     tabana bakıyor. Sabit sayılar (470 / 0 / 0 / 88 / yalnız "meydan")
+     yanlış bir şey ölçüyordu: esnaf gerçekten bir fiyatı onaylayınca ya da
+     yeni bir yönetici hesabı açılınca sınama, kendi kirletmediği bir
+     değişiklik yüzünden kırmızıya dönüyordu. Sorulması gereken soru
+     "veritabanı şu sabit hâlde mi" değil, "SINAMA hiçbir iz bıraktı mı". */
+  const [[tu], [td], [tm], ty] = await Promise.all([
+    sql`SELECT count(*)::int c FROM urunler`,
+    sql`SELECT count(*)::int c FROM urunler WHERE kaynak = 'dukkan'`,
+    sql`SELECT count(*)::int c FROM urunler WHERE miktar IS NULL`,
+    sql`SELECT kullanici_adi FROM yoneticiler ORDER BY id`,
+  ]);
+  taban = {
+    urun: tu.c,
+    dukkan: td.c,
+    miktarNull: tm.c,
+    fiyatGecmisi: enSon,
+    hesaplar: ty.map((r) => r.kullanici_adi).sort(),
+  };
+  ok(`taban ölçüldü: ${taban.urun} ürün, kaynak='dukkan' ${taban.dukkan}, ` +
+     `miktar IS NULL ${taban.miktarNull}, hesap: ${taban.hesaplar.join(", ")}`);
 
   await sql`INSERT INTO yoneticiler (kullanici_adi, parola_hash, sifre_degistirmeli)
             VALUES (${kullaniciAdi}, ${await parolaHashle(parola)}, false)`;
@@ -399,15 +423,27 @@ try {
     sql`SELECT kullanici_adi FROM yoneticiler ORDER BY id`,
   ]);
 
-  u.c === 470 ? ok("ürün sayısı 470") : no(`ürün sayısı ${u.c}`);
-  dk.c === 0 ? ok("kaynak='dukkan' olan ürün 0") : no(`kaynak='dukkan' ${dk.c} ürün`);
-  f.c === 0 ? ok("fiyat_gecmisi 0 kayıt") : no(`fiyat_gecmisi ${f.c} kayıt`);
-  m.c === 88 ? ok("miktar IS NULL olan 88 ürün") : no(`miktar IS NULL ${m.c} ürün`);
+  if (!taban) {
+    no("taban ölçülemedi — sınama hazırlıkta patlamış, son durum kıyaslanamıyor");
+  } else {
+    const kiyas = (ad, simdi, bekle) =>
+      simdi === bekle ? ok(`${ad}: ${simdi} (tabanla aynı)`)
+                      : no(`${ad}: ${simdi}, tabanda ${bekle} idi — SINAMA İZ BIRAKTI`);
 
-  const adlar = y.map((r) => r.kullanici_adi);
-  adlar.length === 1 && adlar[0] === "meydan"
-    ? ok("yalnızca 'meydan' hesabı kaldı")
-    : no(`hesaplar: ${adlar.join(", ")}`);
+    kiyas("ürün sayısı", u.c, taban.urun);
+    kiyas("kaynak='dukkan' olan ürün", dk.c, taban.dukkan);
+    kiyas("miktar IS NULL olan ürün", m.c, taban.miktarNull);
+
+    const [{ enSon: sonGecmis }] = await sql`SELECT COALESCE(max(id), 0)::int AS "enSon" FROM fiyat_gecmisi`;
+    f.c === 0 || sonGecmis === taban.fiyatGecmisi
+      ? ok(`fiyat_gecmisi: sınamanın eklediği kayıt kalmadı (${f.c} kayıt, taban damgası ${taban.fiyatGecmisi})`)
+      : no(`fiyat_gecmisi'nde sınamadan kalan kayıt var (${f.c})`);
+
+    const adlar = y.map((r) => r.kullanici_adi).sort();
+    JSON.stringify(adlar) === JSON.stringify(taban.hesaplar)
+      ? ok(`hesaplar tabanla aynı: ${adlar.join(", ")}`)
+      : no(`hesaplar: ${adlar.join(", ")} — tabanda ${taban.hesaplar.join(", ")} idi`);
+  }
 
   bolum(`YETKİLİ SINAMA SONUÇ: ${g} geçti, ${k} kaldı`);
   process.exit(k === 0 ? 0 : 1);

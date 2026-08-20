@@ -68,10 +68,19 @@ export default function KatalogBolumu({
       pahali: (a, b) => b.fiyat - a.fiyat,
       // Önce ağırlık/hacim (kıyaslanabilir), sonra adet, en sonda birimsizler
       birim: (a, b) => bfGrup(a) - bfGrup(b) || bfDeger(a) - bfDeger(b),
-      indirim: (a, b) => indirimYuzde(b) - indirimYuzde(a),
+      // Eşit indirim oranında ucuz olan önce — yoksa sıra rastgele kalıyor
+      indirim: (a, b) => indirimYuzde(b) - indirimYuzde(a) || a.fiyat - b.fiyat,
       isim: (a, b) => a.ad.localeCompare(b.ad, "tr"),
     };
-    return siralama === "onerilen" ? suzulmus : [...suzulmus].sort(kural[siralama]);
+
+    /* Stokta olmayanlar HANGİ sıralama seçilirse seçilsin en sona.
+       Tezgâhta olmayan ürünün listenin başında durması, ziyaretçiye
+       alamayacağı şeyi öneriyor. Sort kararlı olduğu için "onerilen"de
+       geri kalanların veri sırası korunuyor. */
+    const stokSonra = (a: Urun, b: Urun) =>
+      Number(a.stokta === false) - Number(b.stokta === false);
+
+    return [...suzulmus].sort((a, b) => stokSonra(a, b) || kural[siralama](a, b));
   }, [urunler, dizin, arama, reyon, indirimli, enAz, enCok, siralama]);
 
   const bos = liste.length === 0;

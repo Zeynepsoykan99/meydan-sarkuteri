@@ -94,13 +94,26 @@ export const sadelestir = (s: string) =>
     .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
     .trim();
 
-/** Virgüllü veya noktalı kullanıcı girişini sayıya çevirir. */
-export function sayiyaCevir(girdi: unknown): number | null {
-  if (typeof girdi === "number") return isFinite(girdi) ? girdi : null;
+/** Virgüllü veya noktalı kullanıcı girişini sayıya çevirir.
+ *
+ *  ÜÇ AYRI SONUÇ, üçü de anlamlı — çağıran ayırt edebilmeli:
+ *    null : alan BOŞ           → "değere dokunulmadı"
+ *    NaN  : alan GEÇERSİZ      → "kullanıcı bir şey yazdı ama sayı değil"
+ *    sayı : geçerli
+ *
+ *  null ile NaN'ı birbirine karıştırmak sessiz veri kaybı üretiyor:
+ *  geçersiz girdi "boş" sayılırsa fiyat sessizce yok sayılır, miktar ise
+ *  null'a çekilip ürünün ölçüsü SİLİNİR. Bu tam olarak taşımada olan şeydi.
+ *
+ *  Regex bilerek katı (kökteki api/_lib ile aynı): çıplak Number() "-5",
+ *  "1e5", "0x10", "+7" gibi girdileri kabul ediyor ve bunlar istemci
+ *  doğrulamasından sızıp sunucuya kadar gidiyordu. */
+export function sayiyaCevir(girdi: unknown): number | null | typeof NaN {
+  if (typeof girdi === "number") return isFinite(girdi) ? girdi : NaN;
   if (typeof girdi !== "string") return null;
-  const t = girdi.trim().replace(/\s/g, "").replace(",", ".");
-  if (!t) return null;
-  const n = Number(t);
-  return isFinite(n) ? n : null;
+  const temiz = girdi.trim().replace(/\s/g, "").replace(",", ".");
+  if (temiz === "") return null;
+  if (!/^\d*\.?\d+$/.test(temiz)) return NaN;   // geçersiz: çağıran karar versin
+  return Number(temiz);
 }
 

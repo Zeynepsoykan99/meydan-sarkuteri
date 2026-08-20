@@ -64,6 +64,19 @@ export default function PanelArayuzu() {
     }
 
     verileriYukle();
+
+    /* Geri/ileri önbelleği (bfcache): sayfa canlandırıldığında React yeniden
+       kurulmaz ve oturumu düşmüş kullanıcı paneli görmeye devam eder —
+       ekranda gerçek fiyatlar durur, her işlem 401 alır. Canlanmada kapıyı
+       yeniden çalıyoruz. */
+    const canlanma = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      setDuzenlenenUrun(null);
+      setYukleniyor(true);
+      verileriYukle();
+    };
+    window.addEventListener("pageshow", canlanma);
+    return () => window.removeEventListener("pageshow", canlanma);
   }, [router]);
 
   async function handleCikis() {
@@ -144,6 +157,10 @@ export default function PanelArayuzu() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: u.id, fiyat: u.fiyat }),
+        // Sahibi onaya dokunup hemen sayfadan ayrılırsa istek iptal oluyordu:
+        // ekranda "onaylı" görünen şey kaydedilmemiş kalıyordu. keepalive
+        // isteği sayfa kapansa da tamamlatıyor (gövde çok küçük, sınır 64 KB).
+        keepalive: true,
       });
 
       if (res.status === 401) {

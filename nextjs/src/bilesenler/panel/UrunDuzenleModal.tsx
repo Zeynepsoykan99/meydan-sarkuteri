@@ -62,6 +62,20 @@ export default function UrunDuzenleModal({
 
   const onaylanmis = urun.kaynak === "dukkan";
 
+  /* Geçersiz (NaN) alanlar — "₺39,50", "39,50 TL", "abc" gibi girdiler.
+     Bunlar yamaya KOYULMAZ ve kullanıcıya söylenir. Sessizce yok saymak,
+     fiyatın güncellenmediğini fark ettirmiyordu; miktarda ise daha kötüsü
+     oluyordu: null'a düşüp ürünün ölçüsünü siliyordu. */
+  function gecersizAlanlar() {
+    const bozuk: string[] = [];
+    if (Number.isNaN(sayiyaCevir(fiyatStr) as number)) bozuk.push("Fiyat");
+    if (indirimli && Number.isNaN(sayiyaCevir(eskiFiyatStr) as number)) {
+      bozuk.push("İndirimden önceki fiyat");
+    }
+    if (Number.isNaN(sayiyaCevir(miktarStr) as number)) bozuk.push("Miktar");
+    return bozuk;
+  }
+
   function hazirlaYama() {
     const f = sayiyaCevir(fiyatStr);
     const ef = indirimli ? sayiyaCevir(eskiFiyatStr) : null;
@@ -69,16 +83,18 @@ export default function UrunDuzenleModal({
     const b = birim || null;
 
     const yama: any = { id: urun!.id };
+    const gecerli = (v: unknown) => v !== null && !Number.isNaN(v as number);
 
-    if (f !== null && f !== urun!.fiyat) yama.fiyat = f;
+    if (gecerli(f) && f !== urun!.fiyat) yama.fiyat = f;
     if (indirimli) {
-      if (ef !== null && ef !== urun!.eskiFiyat) yama.eskiFiyat = ef;
+      if (gecerli(ef) && ef !== urun!.eskiFiyat) yama.eskiFiyat = ef;
     } else if (urun!.eskiFiyat) {
       yama.eskiFiyat = null;
     }
 
     if (stokta !== (urun!.stokta !== false)) yama.stokta = stokta;
-    if (m !== urun!.miktar) yama.miktar = m;
+    // NaN'da miktara DOKUNMA: yoksa geçersiz girdi ölçüyü siler
+    if (!Number.isNaN(m as number) && m !== urun!.miktar) yama.miktar = m;
     if (b !== (urun!.birim ?? null)) yama.birim = b;
 
     return { yama, f, ef, m, b };
@@ -109,6 +125,17 @@ export default function UrunDuzenleModal({
     if (e) e.preventDefault();
     if (!urun || islemde) return;
 
+    /* Bozuk alan varsa hiçbir şey gönderme ve NEDENİNİ söyle. Kaydet'in
+       sessizce iş görmemesi, sahibinin "₺" ya da "TL" yazdığında neden
+       bir şey olmadığını anlamamasına yol açıyordu. */
+    const bozuk = gecersizAlanlar();
+    if (bozuk.length) {
+      setHatalar(
+        bozuk.map((a) => `${a} sayı olmalı — örnek: 39,50 (₺ ya da TL yazmayın)`)
+      );
+      return;
+    }
+
     const { yama, f } = hazirlaYama();
 
     // Değişiklik yoksa ve onaylanmamışsa direkt onayla
@@ -132,6 +159,20 @@ export default function UrunDuzenleModal({
     }
 
     await kaydet(yama);
+  }
+
+  /* Kapatırken kaydedilmemiş değişiklik varsa sor. Ölçüt hazirlaYama():
+     alana dokunulup eski değere geri dönülmüşse değişiklik YOK sayılır,
+     boşuna soru çıkmaz. */
+  function kapatmayiDene() {
+    if (islemde) return;
+    const { yama } = hazirlaYama();
+    const degisen = Object.keys(yama).filter((k) => k !== "id");
+    if (degisen.length === 0 && gecersizAlanlar().length === 0) {
+      onKapat();
+      return;
+    }
+    if (window.confirm("Kaydedilmemiş değişiklik var. Çıkılsın mı?")) onKapat();
   }
 
   async function handleFiyatDogru() {
@@ -164,7 +205,7 @@ export default function UrunDuzenleModal({
         className="fixed inset-x-0 bottom-0 top-auto z-40 m-auto flex max-h-[92dvh] w-full max-w-[460px] flex-col rounded-t-buyuk border-0 bg-beyaz p-0 text-murekkep shadow-2xl backdrop:bg-murekkep/55 sm:inset-0 sm:top-0 sm:rounded-buyuk"
         onCancel={(e) => {
           e.preventDefault();
-          onKapat();
+          kapatmayiDene();
         }}
       >
         <form onSubmit={handleSubmit} className="flex max-h-[92dvh] flex-col">
@@ -190,7 +231,7 @@ export default function UrunDuzenleModal({
             </div>
             <button
               type="button"
-              onClick={onKapat}
+              onClick={kapatmayiDene}
               aria-label="Kapat"
               className="grid size-11 place-items-center rounded-full bg-tezgah text-lg hover:bg-cizgi"
             >
