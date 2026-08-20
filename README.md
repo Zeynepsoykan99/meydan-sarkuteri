@@ -1,48 +1,32 @@
 # Meydan Şarküteri
 
-Mahalle marketi için tek sayfalık **ürün kataloğu**. Ürünler ve etiket fiyatları
-gösterilir; sepet, sipariş ya da ödeme yoktur. Sadece frontend.
+Mahalle marketi için modern **ürün kataloğu** (Next.js 16.2 App Router + Tailwind CSS v4 + Neon Postgres).
+Ürünler ve etiket fiyatları gösterilir; sepet, sipariş ya da ödeme yoktur.
 
 **Canlı:** <https://meydan-sarkuteri.vercel.app>
 
-## Çalıştırma
+## Çalıştırma (Next.js)
 
-**Bir yerel sunucu gerekiyor:**
-
-```
+```bash
+cd nextjs
 npm install
-npx serve .
+npm run dev            # http://localhost:3000
+npm run build && npm start
 ```
 
-Veritabanı olmadan da çalışır: `/api/katalog` cevap vermezse sayfa
-`data/products.json` yedeğine düşer ve fiyatların güncel olmayabileceğini
-söyleyen bir not gösterir.
+## Yayın (Vercel)
 
-`index.html`'i çift tıklayıp `file://` ile açmak **çalışmaz**. Ürün verisi artık
-`data/products.json` dosyasından `fetch` ile okunuyor; tarayıcılar `file://`
-altında `fetch`'i farklı-kaynak sayıp engelliyor. Sayfa bu durumda boş kalmaz,
-"Katalog yüklenemedi" hatasını gösterir — ama ürünleri göremezsin.
+**Şu an canlıda olan hâlâ eski vanilla site.** Next.js sürümü `nextjs` dalında
+hazır ve yayına geçmeye elverişli; geçiş, o dal `main`'e birleştirildiğinde
+gerçekleşir. Doğrulama: canlıda `/api/katalog` 200, `/api/saglik` 404 ve
+`/urun/u001` 404 dönüyor — üçü de eski sitenin imzası.
 
-Bağımlılık, paket yöneticisi ve build adımı yok; yalnızca dosyaları HTTP
-üzerinden servis eden bir sunucu yeterli (`npx serve`, `python -m http.server`,
-VS Code Live Server — hepsi olur).
-
-## Yayın
-
-Vercel'de, `main` dalına bağlı. Dosyalar olduğu gibi CDN'den servis edilir;
-derlenecek bir şey ve çalışan sunucu kodu yok. `main`'e her push production'a
-otomatik çıkar. Elle deploy gerekirse:
-
-```
-vercel --prod
-```
-
-Sayfada iki analitik script'i var: `insights` (sayfa görüntüleme, hangi reyon
-geziliyor) ve `speed-insights` (gerçek kullanıcıda LCP/CLS/INP). İkisi Vercel'de
-ayrı ürün ve **ayrı ayrı panelden açılır** — açılmayanın script'i 404 döner,
-`defer` olduğu için sayfayı etkilemez. Paketsiz kurulum kullanıldı; `package.json`
-eklenmedi, çünkü Vercel bunu görünce projeyi Node projesi sanıp build çalıştırmaya
-kalkar.
+Geçiş yapıldığında `vercel.json` `nextjs/` alt dizinini derletir
+(`buildCommand: cd nextjs && npm run build`). Eski vanilla dosyalar
+(`index.html`, `js/`, `css/`) arşiv olarak depoda kalır ama `.vercelignore`
+sayesinde artık yayımlanmaz; eski adresler (`/index.html`, `/giris.html`,
+`/panel.html`, `/afis.html`) Next tarafında kalıcı yönlendirmeyle (308)
+karşılanır.
 
 ## Veritabanı
 

@@ -146,9 +146,13 @@ export async function bakimYap() {
        WHERE biter < now() - interval '1 day'
       RETURNING id`;
     sonuc.oturumlar = o.length;
+
+    if (sonuc.denemeler > 0 || sonuc.oturumlar > 0) {
+      console.log(`[BAKIM] Temizlik tamamlandı: ${sonuc.denemeler} eski deneme, ${sonuc.oturumlar} süresi geçmiş oturum silindi.`);
+    }
   } catch (e) {
     sonuc.hata = (e as Error).message;
-    console.error("bakım başarısız (yok sayıldı):", (e as Error).message);
+    console.error("[BAKIM] Bakım işlemi başarısız (yok sayıldı):", (e as Error).message);
   }
   return sonuc;
 }

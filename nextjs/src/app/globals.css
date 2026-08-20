@@ -271,3 +271,74 @@
   .arama input:focus-visible { outline: 3px solid var(--color-sari); outline-offset: 1px; }
   .arama input::-webkit-search-cancel-button { display: none; }
 }
+
+/* =====================================================================
+   Animasyonlar
+   ===================================================================== */
+
+/* Kart giriş efekti: alttan kayarak ve opaklık artarak görünür.
+   Her kart bir öncekinden 30ms sonra başlıyor — kademeli giriş. */
+@keyframes kart-gir {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kart {
+  animation: kart-gir 0.35s ease both;
+}
+
+/* İlk 20 karta kademeli gecikme — sonrası sabit kalır, yoksa uzun
+   listelerde son kartlar saniyeler sonra görünür. */
+.izgara .kart:nth-child(1)  { animation-delay: 0ms; }
+.izgara .kart:nth-child(2)  { animation-delay: 30ms; }
+.izgara .kart:nth-child(3)  { animation-delay: 60ms; }
+.izgara .kart:nth-child(4)  { animation-delay: 90ms; }
+.izgara .kart:nth-child(5)  { animation-delay: 120ms; }
+.izgara .kart:nth-child(6)  { animation-delay: 150ms; }
+.izgara .kart:nth-child(7)  { animation-delay: 180ms; }
+.izgara .kart:nth-child(8)  { animation-delay: 210ms; }
+.izgara .kart:nth-child(9)  { animation-delay: 240ms; }
+.izgara .kart:nth-child(10) { animation-delay: 270ms; }
+.izgara .kart:nth-child(11) { animation-delay: 300ms; }
+.izgara .kart:nth-child(12) { animation-delay: 330ms; }
+.izgara .kart:nth-child(13) { animation-delay: 360ms; }
+.izgara .kart:nth-child(14) { animation-delay: 390ms; }
+.izgara .kart:nth-child(15) { animation-delay: 420ms; }
+.izgara .kart:nth-child(16) { animation-delay: 450ms; }
+.izgara .kart:nth-child(n+17) { animation-delay: 480ms; }
+
+/* Başa dön butonu giriş animasyonu */
+@keyframes basa-don-gir {
+  from { opacity: 0; transform: scale(0.8) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* İndirim rozeti vurgu: hafif nabız */
+@keyframes rozet-nabiz {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.kart-rozet {
+  animation: rozet-nabiz 2s ease-in-out infinite;
+}
+
+/* =====================================================================
+   Erişilebilirlik: hareket duyarlılığı
+   ===================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .kart,
+  .kart-rozet {
+    animation: none !important;
+  }
+  .kart:hover {
+    transform: none;
+  }
+  .kart-gorsel {
+    transition: none;
+  }
+  .dugme,
+  .reyon {
+    transition: none;
+  }
+}

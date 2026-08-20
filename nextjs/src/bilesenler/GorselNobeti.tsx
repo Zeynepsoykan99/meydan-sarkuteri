@@ -16,6 +16,17 @@ import { useEffect } from "react";
    köpürmediği için capture şart. */
 export default function GorselNobeti() {
   useEffect(() => {
+    // Mount anında halihazırda kırılmış görselleri tara (önbellek/hızlı hata)
+    document
+      .querySelectorAll<HTMLImageElement>("img.kart-gorsel, .detay-gorsel-alan img")
+      .forEach((img) => {
+        if (img.complete && img.naturalHeight === 0 && img.src) {
+          img.style.visibility = "hidden";
+          const alan = img.closest(".kart-gorsel-alan, .detay-gorsel-alan");
+          if (alan) alan.classList.add("gorsel-yok");
+        }
+      });
+
     const dinle = (e: Event) => {
       const hedef = e.target as HTMLElement | null;
       if (!hedef || hedef.tagName !== "IMG") return;

@@ -1,29 +1,30 @@
-# Meydan Şarküteri — Next.js sürümü (Aşama 1 & 2)
+# Meydan Şarküteri — Next.js Sürümü
 
-Kök dizindeki vanilla site **canlıda kalmaya devam ediyor**; bu klasör onun
-kademeli Next.js geçişi. Aynı depo, aynı Neon veritabanı, aynı şema.
+Bu proje Next.js 16.2 App Router, Tailwind CSS v4 ve Neon Postgres tabanlıdır.
+**Henüz yayında değil:** canlıdaki adres hâlâ eski vanilla siteyi sunuyor.
+Yayına geçiş `nextjs` dalı `main`'e birleştirildiğinde olur (bkz. kökteki
+README, "Yayın" bölümü).
 
-## Neden
+## Neden Next.js
 
-Kök sitede 470 kart istemcide çiziliyor: ham HTML'de tek ürün yok, arama
-motoru boş sayfa görüyor, ürün detayı `?urun=u001` sorgu parametresi olduğu
-için indekslenmiyor. Bu sürümde katalog **sunucuda** render ediliyor ve her
-ürünün `/urun/u001` gibi gerçek bir adresi, kendi başlığı ve açıklaması var.
+Eski sitede 470 kart istemcide çiziliyordu: ham HTML'de tek ürün yoktu, arama
+motoru boş sayfa görüyordu, ürün detayı `?urun=u001` sorgu parametresi olduğu
+için indekslenmiyordu. Bu sürümde katalog **sunucuda** render ediliyor ve her
+ürünün `/urun/u001` gibi gerçek bir statik adresi, kendi başlığı ve açıklaması var.
 
 ## Çalıştırma
 
-`DATABASE_URL` gerekiyor; Next yalnızca kendi kök dizinindeki .env
-dosyalarını okuduğu için kökten kopyalanmalı:
-
-```
-grep ^DATABASE_URL ../.env.local > .env.local
+```bash
+cd nextjs
 npm install
 npm run dev            # :3000
 npm run build && npm start
 ```
 
-`data/dukkan.json` depo kökünde duruyor ve buradan `../data/dukkan.json`
-olarak okunuyor — iki sürüm aynı dosyayı paylaşıyor.
+`data/dukkan.json` depo kökünde duruyor; iki sürüm aynı dosyayı paylaşıyor.
+`prebuild` (yani `scripts/db-isit.mjs`) dosyayı `nextjs/data/` altına kopyalar,
+çünkü Vercel'de kök `nextjs/` olduğunda üst dizine erişim güvenilir değil.
+`lib/dukkan.ts` önce kopyayı, sonra `../data/` yolunu dener.
 
 ## Yapı
 
@@ -38,15 +39,22 @@ src/app/
     cikis/           POST  — oturum kapatma
     oturum/          GET   — oturum durumu
     sifre-degistir/  POST  — şifre değiştirme
+    saglik/          GET   — sağlık/canlılık raporu (DB gecikmesi, yedek tazeliği)
     yonetici/
       durum/         GET   — dükkân durumu
       urunler/       GET   — tüm ürünler + reyonlar
       urun/          PATCH — ürün güncelleme
-  globals.css        Tailwind teması (@theme) + bileşen sınıfları
-  layout.tsx         kök layout (fontlar, metadata)
+                     POST  — yeni ürün ekleme
+                     DELETE— ürün silme
+  globals.css        Tailwind teması (@theme) + bileşen sınıfları + animasyonlar
+  layout.tsx         kök layout (fontlar, metadata, viewport)
+  robots.ts          robots.txt (panel/giriş/api/afiş indekslenmez)
+  global-error.tsx   kök hata sınırı
+  (vitrin)/error.tsx, panel/error.tsx   bölüm hata sınırları
 
 src/bilesenler/
-  panel/             PanelArayuzu, UrunDuzenleModal, FiyatOnayModal
+  panel/             PanelArayuzu, UrunDuzenleModal, UrunEkleModal,
+                     UrunSilModal, FiyatOnayModal
   (vitrin)           Baslik, KatalogBolumu, UrunKarti, DukkanBolum, AcikDurum...
 
 src/lib/
@@ -57,11 +65,15 @@ src/lib/
   dukkan.ts          data/dukkan.json okuma
   bicim.ts           para formatlama, sadelestir, etiketParcalari
   auth.ts            scrypt hashle/doğrula, oturum, hız sınırı, bakım
-  yonetici.ts        yama doğrulama, fiyat uyarıları
+  yonetici.ts        yama doğrulama, yeni ürün doğrulama, fiyat uyarıları
 
 tests/
-  dukkan.mjs         Aşama 1 sınamaları (47 test)
-  asama2.mjs         Aşama 2 sınamaları (14 test)
+  dukkan.mjs                 Aşama 1 — saat, katalog, erişilebilirlik (47)
+  asama2.mjs                 Aşama 2 — yetkisiz taraf, durum kodları (42)
+  asama2-yetkili.mjs         Aşama 2 — gerçek oturumla yazma yolu (46)
+  asama3-urun-yonetimi.mjs   Aşama 3 — ürün ekleme/silme (21)
+  saglik.mjs                 sağlık ucu, PWA, yönlendirmeler, başlıklar (21)
+  agirlik.mjs                sayfa ağırlığı ölçümü (sınama değil, rapor)
 ```
 
 ## Kararlar
@@ -70,6 +82,14 @@ tests/
   palet `--color-*: initial` ile kapalı; `bg-blue-500` hiçbir şey üretmez.
 - **Cache Components** (`cacheComponents: true`) + `use cache` +
   `cacheLife("minutes")` → revalidate 1 dk. Elle `Cache-Control` yazılmıyor.
+- **Derleme veritabanına dokunmuyor**: `NEXT_PHASE === "phase-production-build"`
+  iken `katalogGetir()` prebuild'in ürettiği `katalog-anlik.json`'u okuyor.
+  `use cache` doldurmasının sabit 50 sn bütçesi vardı ve Neon'un uyanması bu
+  bütçenin içinde ödeniyordu; derleme rastgele çöküyordu. Artık sayfa üretimi
+  ~5 sn ve veritabanı durumundan bağımsız. Çalışma zamanı değişmedi.
+- **Hata sınırları**: kök (`global-error.tsx`), vitrin ve panel için ayrı
+  `error.tsx`. Kök layout çöktüğünde stil de düşeceği için `global-error`
+  temayı kendisi içe aktarıyor.
 - **`next/image` kullanılmıyor**: 470 ürün görseli zaten uzak CDN'de 400×400.
   İyileştirici dönüştürme kotası harcar, kazanç düşük.
 - Açık/kapalı göstergesi `connection()` + `<Suspense>` ile akıyor: prerender
@@ -81,12 +101,14 @@ tests/
 - **Panel mobil öncelikli**: esnafın telefonundan fiyat onayı ve düzenleme.
   10 kat sıçrama kontrolü, geri alma, uyarı sistemi.
 
-## Bilinen kusur
+## Bilinen kusur (geçici çözümle kapatıldı)
 
 `generateStaticParams` listesinde olmayan bir ürün id'si üretim derlemesinde
-404 yerine **500** veriyor. Belgelenen çözüm `dynamicParams = false`,
-Cache Components ile uyumsuz. `next dev`'de 404 doğru dönüyor. 470 gerçek
-ürün adresi etkilenmiyor.
+404 yerine **500** veriyordu. Belgelenen çözüm `dynamicParams = false`,
+Cache Components ile uyumsuz. `src/proxy.ts` isteği sayfaya varmadan kesiyor
+ve bilinmeyen kimliği Next'in normal 404 akışına yazıyor; kimlik listesini
+(`src/urun-kimlikleri.json`) derleme öncesi `db-isit.mjs` üretiyor.
+Bedeli ve kalıcı çözüm: `ILERLEME.md`.
 
 ## Derleme Özeti
 
@@ -97,13 +119,21 @@ revalidate 1m / expire 1h. Derleme süresi: ~6 saniye.
 
 ```
 npm i --no-save playwright-core     # projeye bağımlılık eklemez
-npm start                            # başka bir terminalde (port 3001)
+npm run build && npm start -- -p 3001
 
-# Aşama 1 testleri
 node --experimental-strip-types tests/dukkan.mjs
-
-# Aşama 2 testleri (giriş, panel, afiş, API güvenliği)
 node --experimental-strip-types tests/asama2.mjs
+node --experimental-strip-types tests/saglik.mjs
+node --experimental-strip-types tests/asama2-yetkili.mjs      # CANLI DB'ye yazar
+node --experimental-strip-types tests/asama3-urun-yonetimi.mjs # CANLI DB'ye yazar
 ```
 
-Toplam: **61 test** (47 + 14), %100 geçer.
+Toplam: **177 sınama**, %100 geçiyor (20 Ağustos 2026).
+
+Son iki dosya canlı veritabanına yazıyor. İkisi de yazdığını geri alıyor:
+`asama2-yetkili` ürünlerin kopyasını alıp sonunda satır satır doğrulayarak
+geri yüklüyor, `asama3` eklediği ürünü ve geçici hesabı `finally` içinde
+siliyor. Ayrıntı: `ILERLEME.md`.
+
+`npm run lint` **temiz değil**: 26 hata (19'u bu turdan önce de vardı).
+Çoğu `any` kullanımı ve efekt içinde `setState`. Derlemeyi engellemiyor.
