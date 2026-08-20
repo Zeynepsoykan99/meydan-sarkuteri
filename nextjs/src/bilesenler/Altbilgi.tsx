@@ -32,7 +32,7 @@ export default async function Altbilgi() {
           <ul className="grid gap-1.5 text-[14.5px]">
             {katalog.reyonlar.slice(0, 6).map((r) => (
               <li key={r.id}>
-                <a href={`/#katalog`} className="text-beyaz/80 no-underline hover:text-beyaz">
+                <a href={`/#katalog`} className="inline-flex min-h-11 items-center text-beyaz/80 no-underline hover:text-beyaz">
                   {r.ad}
                 </a>
               </li>

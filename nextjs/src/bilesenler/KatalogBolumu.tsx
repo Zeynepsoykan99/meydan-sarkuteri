@@ -138,12 +138,12 @@ export default function KatalogBolumu({
               <input type="number" min={0} step={1} inputMode="numeric" placeholder="En az ₺"
                      aria-label="En düşük fiyat" value={enAz}
                      onChange={(e) => setEnAz(e.target.value)}
-                     className="w-[86px] bg-transparent py-1.5 text-[14.5px] outline-none" />
+                     className="min-h-11 w-[86px] bg-transparent py-1.5 text-[14.5px] outline-none" />
               <span aria-hidden="true" className="text-murekkep-soluk">–</span>
               <input type="number" min={0} step={1} inputMode="numeric" placeholder="En çok ₺"
                      aria-label="En yüksek fiyat" value={enCok}
                      onChange={(e) => setEnCok(e.target.value)}
-                     className="w-[86px] bg-transparent py-1.5 text-[14.5px] outline-none" />
+                     className="min-h-11 w-[86px] bg-transparent py-1.5 text-[14.5px] outline-none" />
             </div>
 
             <label className="flex items-center gap-2 text-[14.5px] text-murekkep-soluk">

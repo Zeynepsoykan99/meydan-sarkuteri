@@ -24,6 +24,9 @@ export type Katalog = {
   guncellendi: string | null;
   reyonlar: Reyon[];
   urunler: Urun[];
+  /** true ise veri canlı veritabanından değil, derleme anındaki
+      kopyadan geldi — ziyaretçiye tarihli uyarı gösterilmeli. */
+  yedekMi?: boolean;
 };
 
 /* data/dukkan.json — dolduruldu bayrağı false iken hiçbir şey gösterilmez */

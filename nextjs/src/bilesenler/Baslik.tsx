@@ -16,7 +16,7 @@ export default async function Baslik() {
   return (
     <header className="sticky top-0 z-40 border-b border-cizgi bg-beyaz">
       <div className="kucak grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-6 py-3.5">
-        <Link href="/" className="flex items-center gap-[11px] text-inherit no-underline">
+        <Link href="/" className="flex min-h-11 items-center gap-[11px] text-inherit no-underline">
           <span
             className="grid size-[42px] place-items-center rounded-[11px] bg-kirmizi
                        font-display text-2xl font-extrabold text-sari

@@ -126,14 +126,27 @@ try {
       const bol = document.getElementById("dukkan");
       const tel = bol?.querySelector('a[href^="tel:"]');
       const harita = bol?.querySelector('a[href*="maps"]');
-      // gerçek dokunma hedefleri: kart içi metin bağlantıları hariç
+      /* Dokunma hedefleri — SAYFANIN TAMAMI taranıyor.
+         Eskiden burada elle seçilmiş bir liste vardı ('#dukkan a, .dugme,
+         select, #dukkan-serit a'). O liste reyon çiplerini kapsamıyordu ve
+         çipler 40px'ken sınama yeşil yanıyordu: kural ihlal ediliyor ama
+         nöbetçi başka yere bakıyordu. Artık etkileşimli her öğeye bakılıyor;
+         muafiyetler AÇIKÇA yazılı ve gerekçeli. */
       const kucuk = [];
+      const MUAF = (e) => (
+        // Ürün kartının tamamı zaten dev bir hedef; içindeki metin
+        // bağlantısı onun üstünde, ayrı bir hedef değil.
+        e.closest('.kart') ||
+        // Gizli/ölçüsüz öğeler (kapalı menü içerikleri vb.)
+        e.getBoundingClientRect().width === 0
+      );
       document.querySelectorAll(
-        '#dukkan a, .dugme, select, #dukkan-serit a'
+        'a[href], button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])'
       ).forEach((e) => {
+        if (MUAF(e)) return;
         const b = e.getBoundingClientRect();
-        if (b.width > 0 && b.height > 0 && b.height < 44) {
-          kucuk.push(`${(e.textContent || e.tagName).trim().slice(0, 16)} ${Math.round(b.height)}`);
+        if (b.width > 0 && b.height > 0 && (b.height < 44 || b.width < 44)) {
+          kucuk.push(`${(e.textContent || e.tagName).trim().slice(0, 16)} ${Math.round(b.width)}x${Math.round(b.height)}`);
         }
       });
       return {

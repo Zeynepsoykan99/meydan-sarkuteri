@@ -5,8 +5,47 @@ import Link from "next/link";
 
 /* Sunucu Bileşeni. 470 ürün SUNUCUDA çiziliyor — geçişin asıl amacı bu.
    Bugünkü site kartları istemcide çiziyor, ham HTML'de tek ürün yok. */
+/* Yedeğe düşüldüğünde gösterilen not.
+   Tarihi yazıyoruz: tarihsiz bir "güncel olmayabilir" uyarısında bir günlük
+   veri ile bir aylık veri aynı görünüyor — ziyaretçi ne kadar eskiye
+   baktığını bilmeli. Damga okunamazsa genel metne düşüyoruz; yanlış tarih
+   göstermek, tarih göstermemekten kötü. */
+function YedekNotu({ damga }: { damga: string | null }) {
+  const t = damga ? new Date(damga) : null;
+  const gecerli = t && !Number.isNaN(t.getTime());
+
+  /* Kökteki not "(8 gün önce)" diye göreli yaş da yazıyordu. Burada YOK:
+     Cache Components prerender sırasında Date.now()'a izin vermiyor
+     ("used Date.now() before accessing uncached data" — haklı olarak,
+     yoksa statik HTML'e donmuş bir "gün önce" gömülürdü). Göreli yaşı
+     geri getirmek ya connection() ile bu şeridi dinamik yapmayı ya da
+     bir istemci bileşenini gerektirir; bunun yerine YIL dahil tam tarih
+     yazıyoruz — "12 Ağustos 2026" zaten ne kadar eskiye bakıldığını
+     tarihsiz bir uyarıdan çok daha iyi söylüyor. */
+  return (
+    <div role="status" className="border-b-[1.5px] border-sari-koyu bg-sari-sis">
+      <p className="kucak py-3 text-[14.5px] leading-snug">
+        <strong>Fiyatlar güncel olmayabilir.</strong>{" "}
+        {gecerli ? (
+          <>
+            Bu fiyatlar{" "}
+            <time dateTime={damga!}>
+              {t!.toLocaleDateString("tr-TR", {
+                day: "numeric", month: "long", year: "numeric",
+              })}
+            </time>{" "}
+            itibarıyla. Canlı katalog okunamadı, kayıtlı son kopya gösteriliyor.
+          </>
+        ) : (
+          "Canlı katalog şu an okunamadı, kayıtlı son kopya gösteriliyor."
+        )}
+      </p>
+    </div>
+  );
+}
+
 export default async function AnaSayfa() {
-  const { urunler, reyonlar, guncellendi } = await katalogGetir();
+  const { urunler, reyonlar, guncellendi, yedekMi } = await katalogGetir();
 
   const indirimliler = urunler
     .filter((u) => u.eskiFiyat && u.stokta !== false)
@@ -19,6 +58,8 @@ export default async function AnaSayfa() {
 
   return (
     <>
+      {yedekMi && <YedekNotu damga={guncellendi} />}
+
       {/* Vitrin */}
       <section className="border-b-[3px] border-murekkep bg-sari">
         <div className="kucak grid items-center gap-14 py-[68px] md:grid-cols-[1.15fr_0.85fr]">

@@ -79,7 +79,8 @@ export default async function UrunSayfasi(
       </nav>
 
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="relative overflow-hidden rounded-buyuk border-[1.5px] border-cizgi bg-tezgah">
+        <div className={`detay-gorsel-alan relative overflow-hidden rounded-buyuk
+                         border-[1.5px] border-cizgi bg-tezgah${u.gorsel ? "" : " gorsel-yok"}`}>
           {u.stokta === false && (
             <span className="absolute left-3 top-3 z-10 rounded-full bg-murekkep px-3 py-1
                              text-[12px] font-bold text-beyaz">Şu an yok</span>

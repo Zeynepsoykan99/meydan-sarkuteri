@@ -2,6 +2,7 @@ import Baslik from "@/bilesenler/Baslik";
 import DukkanSerit from "@/bilesenler/DukkanSerit";
 import DukkanBolum from "@/bilesenler/DukkanBolum";
 import Altbilgi from "@/bilesenler/Altbilgi";
+import GorselNobeti from "@/bilesenler/GorselNobeti";
 import { KatalogDurumProvider } from "@/bilesenler/KatalogDurumu";
 
 export default function VitrinLayout({
@@ -27,6 +28,7 @@ export default function VitrinLayout({
 
       <DukkanBolum />
       <Altbilgi />
+      <GorselNobeti />
     </>
   );
 }

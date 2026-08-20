@@ -174,6 +174,21 @@
     border-radius: var(--radius-orta);
     overflow: hidden;
   }
+  /* Görsel CDN'den gelmezse kart boş bir çerçeve gibi durmasın.
+     Görseller A101 ve Migros CDN'lerinden hotlink; o taraf bir gün
+     engellerse 470 kart birden kırık ikona döner. */
+  .kart-gorsel-alan.gorsel-yok::after,
+  .detay-gorsel-alan.gorsel-yok::after {
+    content: "🏷️";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0.3;
+  }
+  .kart-gorsel-alan.gorsel-yok::after { font-size: 28px; }
+  .detay-gorsel-alan.gorsel-yok::after { font-size: 42px; }
+
   .kart-gorsel {
     width: 100%;
     height: auto;
@@ -213,6 +228,9 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    /* min-height 44px: dokunma hedefi alt sınırı. padding tek başına
+       40px veriyordu — parmakla ıskalanan bir hedef. */
+    min-height: 44px;
     padding: 8px 15px;
     background: var(--color-beyaz);
     border: 1.5px solid var(--color-cizgi);

@@ -1,5 +1,6 @@
 import { cacheLife } from "next/cache";
 import { sqlAl } from "./veritabani";
+import anlik from "../katalog-anlik.json";
 import type { Katalog, Reyon, Urun } from "./tipler";
 
 /* =====================================================================
@@ -40,21 +41,36 @@ export async function katalogGetir(): Promise<Katalog> {
   "use cache";
   cacheLife("minutes");
 
-  const sql = sqlAl();
-  const [reyonlar, urunler, damga] = await Promise.all([
-    // "adet" YOK: reyon başına sayı arayüzde hesaplanıyor, böylece
-    // sayaçla gerçek sayı ayrışamıyor.
-    sql`SELECT id, ad, ikon FROM reyonlar ORDER BY sira NULLS LAST, id`,
-    sql`SELECT id, ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim, stokta, kaynak
-        FROM urunler ORDER BY id`,
-    sql`SELECT max(guncellendi) AS en_son FROM urunler`,
-  ]);
+  try {
+    const sql = sqlAl();
+    const [reyonlar, urunler, damga] = await Promise.all([
+      // "adet" YOK: reyon başına sayı arayüzde hesaplanıyor, böylece
+      // sayaçla gerçek sayı ayrışamıyor.
+      sql`SELECT id, ad, ikon FROM reyonlar ORDER BY sira NULLS LAST, id`,
+      sql`SELECT id, ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim, stokta, kaynak
+          FROM urunler ORDER BY id`,
+      sql`SELECT max(guncellendi) AS en_son FROM urunler`,
+    ]);
 
-  return {
-    guncellendi: (damga[0]?.en_son as Date | null)?.toISOString() ?? null,
-    reyonlar: reyonlar as Reyon[],
-    urunler: (urunler as UrunSatiri[]).map(urunuCevir),
-  };
+    return {
+      guncellendi: (damga[0]?.en_son as Date | null)?.toISOString() ?? null,
+      reyonlar: reyonlar as Reyon[],
+      urunler: (urunler as UrunSatiri[]).map(urunuCevir),
+    };
+  } catch (e) {
+    /* YEDEĞE DÜŞME — kökteki data/products.json zincirinin karşılığı.
+       Veritabanı okunamazsa sayfayı hata ekranıyla bırakmak yerine
+       derleme anındaki kopyayı gösteriyoruz. Ziyaretçiye bunun bayat
+       veri olduğu ve TARİHİ söyleniyor: tarihsiz bir "güncel olmayabilir"
+       uyarısında bir günlük veri ile bir aylık veri aynı görünüyor. */
+    console.error("katalog: veritabanı okunamadı, yedeğe düşülüyor:", (e as Error).message);
+    return {
+      guncellendi: anlik.guncellendi,
+      reyonlar: anlik.reyonlar as Reyon[],
+      urunler: anlik.urunler as Urun[],
+      yedekMi: true,
+    };
+  }
 }
 
 /** Tek ürün — detay sayfası ve generateMetadata için. */

@@ -63,6 +63,33 @@ const basladi = Date.now();
    sorgusuyla yapmak ayrıca daha dürüst: derlemenin atacağı sorgunun
    maliyetini ölçüyor. */
 const KIMLIK_DOSYASI = new URL("../src/urun-kimlikleri.json", import.meta.url);
+const ANLIK_DOSYASI = new URL("../src/katalog-anlik.json", import.meta.url);
+
+/* Katalogun derleme anındaki tam kopyası. lib/katalog.ts veritabanına
+   ulaşamadığında buna düşüyor ve ziyaretçiye "fiyatlar X tarihli" diyor —
+   kökteki data/products.json yedeğinin karşılığı. Depoya giriyor ki
+   veritabanı erişilemezken de derleme yapılabilsin. */
+async function anlikYaz(sql) {
+  const [reyonlar, urunler, damga] = await Promise.all([
+    sql`SELECT id, ad, ikon FROM reyonlar ORDER BY sira NULLS LAST, id`,
+    sql`SELECT id, ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim, stokta, kaynak
+          FROM urunler ORDER BY id`,
+    sql`SELECT max(guncellendi) AS en_son FROM urunler`,
+  ]);
+  const sayi = (v) => (v === null || v === undefined ? null : Number(v));
+  const paket = {
+    alindi: new Date().toISOString(),
+    guncellendi: damga[0]?.en_son ? new Date(damga[0].en_son).toISOString() : null,
+    reyonlar,
+    urunler: urunler.map((u) => ({
+      id: u.id, ad: u.ad, reyon: u.reyon, gorsel: u.gorsel,
+      fiyat: sayi(u.fiyat) ?? 0, eskiFiyat: sayi(u.eski_fiyat),
+      kaynak: u.kaynak, miktar: sayi(u.miktar), birim: u.birim, stokta: u.stokta,
+    })),
+  };
+  writeFileSync(ANLIK_DOSYASI, JSON.stringify(paket) + "\n", "utf8");
+  console.log(`db-isit: src/katalog-anlik.json yazıldı (${paket.urunler.length} ürün, damga ${paket.guncellendi})`);
+}
 
 async function kimlikleriYaz(satirlar) {
   const kimlikler = satirlar.map((s) => s.id);
@@ -89,6 +116,7 @@ for (let deneme = 1; deneme <= DENEME; deneme++) {
       `db-isit: veritabanı hazır (${ms} ms, ${deneme}. deneme, toplam ${toplam} ms)`
     );
     await kimlikleriYaz(satirlar);
+    await anlikYaz(sql);
     if (ms > 5000) {
       console.log(
         "db-isit: uyanma uzun sürdü — bu maliyet artık derlemenin " +
