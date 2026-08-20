@@ -26,11 +26,21 @@
   --color-yesil-canli: #3fbf6a;
   --color-yesil-metin: #14713c;
   --color-yesil-sis: #e4f5e9;
+  --color-yesil-vurgu: #1c6b36; /* düzenleme modalındaki onay düğmesi vurgusu */
   --color-beyaz: #ffffff;
   --color-tezgah: #faf8f3; /* ürün görselinin oturduğu ılık zemin */
   --color-murekkep: #1b1917;
   --color-murekkep-soluk: #6b6560;
+  --color-vitrin-metin: #4a443e; /* sarı vitrin üzerinde gövde metni: murekkep-soluk orada yeterince okunmuyor */
   --color-cizgi: #e9e4da;
+
+  /* Panel uyarıları. Sarı ailesi "dikkat et", mavi "bilgi" anlamında;
+     ziyaretçi arayüzünde kullanılmıyor, yalnızca /panel içinde. */
+  --color-sari-sis: #fff8e1;   /* uyarı kutusu zemini */
+  --color-sari-rozet: #fff3cd; /* rozet zemini */
+  --color-sari-metin: #7a5b00; /* sarı zemin üzerinde okunur metin */
+  --color-mavi-sis: #e7f0ff;
+  --color-mavi-metin: #234e8f;
 
   /* next/font değişkenleri layout.tsx'te <html>'e bağlanıyor */
   --font-display: var(--yazi-display), "Trebuchet MS", system-ui, sans-serif;

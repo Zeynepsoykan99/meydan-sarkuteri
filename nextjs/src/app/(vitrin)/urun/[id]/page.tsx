@@ -50,11 +50,17 @@ export default async function UrunSayfasi(
 
   /* BİLİNEN KUSUR (Next 16.2.12 + cacheComponents): generateStaticParams
      listesinde OLMAYAN bir id üretim derlemesinde 404 yerine 500 veriyor.
-     Kaynağı build/templates/app-page.js: SSG rotasında notFound()
+     Kaynağı build/templates/app-page.js:1002 — SSG rotasında notFound()
      revalidate 0 üretiyor, kod "0 < 1" diye reddediyor. Belgelenen çözüm
-     `dynamicParams = false` cacheComponents ile uyumsuz; connection() ile
-     isteği dinamik yapmak da işe yaramadı. next dev'de 404 doğru dönüyor,
-     yalnızca üretim derlemesinde. 470 gerçek ürün adresi etkilenmiyor. */
+     `dynamicParams = false` cacheComponents ile uyumsuz (Turbopack derlemeyi
+     reddediyor); connection() ile isteği dinamik yapmak da işe yaramadı.
+     16.2.12 dalın sonuncusu, yama yok. next dev'de 404 doğru dönüyor.
+
+     ARTIK BURAYA ULAŞILMIYOR: src/proxy.ts geçersiz id'leri istek sayfaya
+     varmadan Next'in normal 404 akışına yazıyor; gerekçesi ve bedeli orada.
+     Aşağıdaki notFound() yine de duruyor — proxy bir gün kaldırılırsa doğru
+     davranış burada yazılı kalsın diye. tests/asama2.mjs bu adreslerin 500
+     DEĞİL 404 döndüğünü nöbet olarak sınıyor. */
   const u = await urunGetir(id);
   if (!u) notFound();
 

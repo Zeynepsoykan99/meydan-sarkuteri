@@ -31,7 +31,7 @@ export default async function AnaSayfa() {
               Bugünün etiketleri,<br />
               <span className="text-kirmizi">tek sayfada.</span>
             </h1>
-            <p className="mt-[22px] max-w-[46ch] text-[18px] leading-relaxed text-[#4A443E]">
+            <p className="mt-[22px] max-w-[46ch] text-[18px] leading-relaxed text-vitrin-metin">
               Meydan Şarküteri&apos;nin bütün reyonları ve güncel fiyatları.{" "}
               <strong>{urunler.length}</strong> ürünün etiketine mağazaya gelmeden bakabilirsin.
             </p>

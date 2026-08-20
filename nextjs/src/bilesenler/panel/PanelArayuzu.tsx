@@ -277,7 +277,7 @@ export default function PanelArayuzu() {
       {yedekEskiMi && !yedekKapatildi && (
         <div className="kucak mt-4">
           <div
-            className="flex items-start justify-between gap-3 rounded-orta border-[1.5px] border-sari-koyu bg-[#FFF8E1] p-3 text-[14.5px] leading-snug"
+            className="flex items-start justify-between gap-3 rounded-orta border-[1.5px] border-sari-koyu bg-sari-sis p-3 text-[14.5px] leading-snug"
             role="status"
           >
             <p className="flex-1">
@@ -462,12 +462,12 @@ export default function PanelArayuzu() {
 
                       <div className="mt-1 flex flex-wrap gap-1">
                         {!onayli && (
-                          <span className="rounded-full bg-[#FFF3CD] px-2 py-0.5 text-[11.5px] font-bold text-[#7A5B00]">
+                          <span className="rounded-full bg-sari-rozet px-2 py-0.5 text-[11.5px] font-bold text-sari-metin">
                             Onaylanmadı
                           </span>
                         )}
                         {olcusuz && (
-                          <span className="rounded-full bg-[#E7F0FF] px-2 py-0.5 text-[11.5px] font-bold text-[#234E8F]">
+                          <span className="rounded-full bg-mavi-sis px-2 py-0.5 text-[11.5px] font-bold text-mavi-metin">
                             Ölçü yok
                           </span>
                         )}

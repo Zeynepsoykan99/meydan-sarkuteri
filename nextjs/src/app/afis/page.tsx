@@ -22,7 +22,7 @@ export default async function AfisSayfasi() {
   const telefon = d?.iletisim?.telefon ?? "0362 854 11 44";
 
   return (
-    <div className="afis-sarma flex justify-center bg-tezgah p-3 sm:p-6 print:bg-white print:p-0">
+    <div className="afis-sarma flex justify-center bg-tezgah p-3 sm:p-6 print:bg-beyaz print:p-0">
       <style>{`
         @page {
           size: A4 portrait;
@@ -30,7 +30,7 @@ export default async function AfisSayfasi() {
         }
         @media print {
           body, html {
-            background: #FFFFFF !important;
+            background: var(--color-beyaz) !important;
             margin: 0 !important;
             padding: 0 !important;
           }
@@ -86,7 +86,7 @@ export default async function AfisSayfasi() {
             Fiyatlarımız <em className="not-italic text-kirmizi">burada</em>
           </p>
 
-          <div className="box-border size-[103mm] max-w-[74vw] rounded-[4mm] border-[1.5mm] border-murekkep bg-white p-[5mm]">
+          <div className="box-border size-[103mm] max-w-[74vw] rounded-[4mm] border-[1.5mm] border-murekkep bg-beyaz p-[5mm]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/qr.svg"

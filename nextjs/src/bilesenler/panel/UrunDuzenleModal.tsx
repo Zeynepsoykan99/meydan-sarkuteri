@@ -214,7 +214,7 @@ export default function UrunDuzenleModal({
 
           {/* Uyarılar & Geri Al */}
           {uyarilar.length > 0 && (
-            <div className="mx-4 mt-3 rounded-orta border-[1.5px] border-sari-koyu bg-[#FFF8E1] p-3 text-[14.5px]" role="alert">
+            <div className="mx-4 mt-3 rounded-orta border-[1.5px] border-sari-koyu bg-sari-sis p-3 text-[14.5px]" role="alert">
               <ul className="space-y-1 font-medium">
                 {uyarilar.map((u, i) => (
                   <li key={i}>{u}</li>
@@ -364,7 +364,7 @@ export default function UrunDuzenleModal({
                 type="button"
                 onClick={handleFiyatDogru}
                 disabled={islemde}
-                className="dugme dugme-hat min-h-[52px] whitespace-nowrap px-4 text-[15.5px] hover:border-[#1C6B36] hover:bg-[#E4F5E9] hover:text-[#1C6B36]"
+                className="dugme dugme-hat min-h-[52px] whitespace-nowrap px-4 text-[15.5px] hover:border-yesil-vurgu hover:bg-yesil-sis hover:text-yesil-vurgu"
               >
                 Fiyat doğru
               </button>

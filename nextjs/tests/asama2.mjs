@@ -91,5 +91,30 @@ bolum("3 — Giriş Ucu Doğrulama ve Savunmalar");
     : no(`/api/giris tur ${turRes.status}`);
 }
 
+/* ═══════ 4. Ürün adresleri: var olan 200, olmayan 404 ═══════ */
+bolum("4 — /urun/[id] durum kodları (500 regresyonu nöbeti)");
+{
+  /* Bu bölüm bir GERİLEME NÖBETİ. Next 16.2.12 + cacheComponents'te
+     SSG rotasında notFound() 500 üretiyordu (app-page.js: "revalidate
+     0 < 1"). src/proxy.ts isteği sayfaya varmadan kesiyor. Buradaki
+     asıl sınama "404 mü" değil, "500 DEĞİL Mİ" — proxy kaldırılır ya da
+     matcher bozulursa bu bölüm anında kırmızıya döner. */
+  const gecerli = await fetch(B + "/urun/u001");
+  gecerli.status === 200 ? ok("/urun/u001 (var olan ürün) 200") : no(`/urun/u001 ${gecerli.status}`);
+
+  const olmayanlar = ["u999", "yok-boyle-bir-sey", "xyz", "U001", "u001%27%3B%20DROP--"];
+  for (const id of olmayanlar) {
+    const y = await fetch(`${B}/urun/${id}`);
+    if (y.status === 404) ok(`/urun/${id} → 404`);
+    else if (y.status === 500) no(`/urun/${id} → 500 — REGRESYON, proxy devre dışı kalmış olabilir`);
+    else no(`/urun/${id} → ${y.status}, 404 bekleniyordu`);
+  }
+
+  const govde = await (await fetch(B + "/urun/u999")).text();
+  govde.includes("Tezgâhta bulamadık")
+    ? ok("404 gövdesi app/not-found.tsx içeriğini taşıyor (çıplak hata sayfası değil)")
+    : no("404 gövdesi beklenen not-found içeriğini taşımıyor");
+}
+
 console.log(`\n${"═".repeat(62)}\nAŞAMA 2 SONUÇ: ${g} geçti, ${k} kaldı`);
 process.exit(k === 0 ? 0 : 1);

@@ -70,8 +70,19 @@ export function yamaDogrula(mevcut: any, yama: Yama) {
     }
   }
 
-  /* --- eskiFiyat --- */
-  let yeniEski = (mevcut.eski_fiyat ?? mevcut.eskiFiyat) === null ? null : Number(mevcut.eski_fiyat ?? mevcut.eskiFiyat);
+  /* --- eskiFiyat ---
+     mevcut satır iki biçimde gelebiliyor: veritabanından eski_fiyat,
+     API yükünden eskiFiyat. İkisi de YOKSA sonuç null olmalı.
+
+     Buradaki ?? zinciri sonuna kadar götürülmeli: `a ?? b` ifadesinde a
+     null ve b tanımsızsa sonuç undefined olur, `undefined === null` ise
+     false'tur ve Number(undefined) NaN verir. NaN sonra "eskiFiyat güncel
+     fiyattan büyük olmalı" kontrolüne düşer (NaN > x her zaman false),
+     yani indirimsiz her ürünün fiyat güncellemesi 400 ile reddedilirdi.
+     Bu, taşıma sırasında oluşmuş ve 470 üründen 433'ünü panelden
+     düzenlenemez hale getirmişti; tests/asama2-yetkili.mjs yakaladı. */
+  const mevcutEski = mevcut.eski_fiyat ?? mevcut.eskiFiyat ?? null;
+  let yeniEski = mevcutEski === null ? null : Number(mevcutEski);
   if (verildi("eskiFiyat")) {
     const e = yama.eskiFiyat;
     if (e === null) {

@@ -31,6 +31,7 @@
    ikinci bir hata biçimi üretmenin faydası yok.
    ===================================================================== */
 
+import { readFileSync, writeFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 // @next/env CommonJS: adlandırılmış dışa aktarım yok, varsayılandan alınıyor
 import nextEnv from "@next/env";
@@ -56,15 +57,38 @@ if (!adres) {
 const sql = neon(adres);
 const basladi = Date.now();
 
+/* Isıtma sorgusu aynı zamanda ürün kimliklerini topluyor: proxy.ts bu
+   listeyi olmayan /urun/<id> adreslerini 404'e çevirmek için kullanıyor
+   (gerekçe orada yazılı). Isıtmayı SELECT 1 yerine gerçek katalog
+   sorgusuyla yapmak ayrıca daha dürüst: derlemenin atacağı sorgunun
+   maliyetini ölçüyor. */
+const KIMLIK_DOSYASI = new URL("../src/urun-kimlikleri.json", import.meta.url);
+
+async function kimlikleriYaz(satirlar) {
+  const kimlikler = satirlar.map((s) => s.id);
+  const yeni = JSON.stringify(kimlikler, null, 0) + "\n";
+  try {
+    if (readFileSync(KIMLIK_DOSYASI, "utf8") === yeni) {
+      console.log(`db-isit: ürün kimlikleri değişmemiş (${kimlikler.length})`);
+      return;
+    }
+  } catch {
+    // dosya yok, birazdan yazılacak
+  }
+  writeFileSync(KIMLIK_DOSYASI, yeni, "utf8");
+  console.log(`db-isit: src/urun-kimlikleri.json yazıldı (${kimlikler.length} kimlik)`);
+}
+
 for (let deneme = 1; deneme <= DENEME; deneme++) {
   const t = Date.now();
   try {
-    await sql`SELECT 1`;
+    const satirlar = await sql`SELECT id FROM urunler ORDER BY id`;
     const ms = Date.now() - t;
     const toplam = Date.now() - basladi;
     console.log(
       `db-isit: veritabanı hazır (${ms} ms, ${deneme}. deneme, toplam ${toplam} ms)`
     );
+    await kimlikleriYaz(satirlar);
     if (ms > 5000) {
       console.log(
         "db-isit: uyanma uzun sürdü — bu maliyet artık derlemenin " +
