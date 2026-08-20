@@ -26,8 +26,10 @@ export function KatalogDurumProvider({ children }: { children: React.ReactNode }
   return <Baglam.Provider value={deger}>{children}</Baglam.Provider>;
 }
 
-export function katalogDurumu(): Durum {
+export function useKatalogDurumu(): Durum {
   const d = useContext(Baglam);
   if (!d) throw new Error("KatalogDurumProvider dışında kullanıldı");
   return d;
 }
+
+export const katalogDurumu = useKatalogDurumu;

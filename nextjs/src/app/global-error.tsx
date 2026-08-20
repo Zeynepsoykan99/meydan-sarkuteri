@@ -48,6 +48,7 @@ export default function GlobalError({
               Yeniden Dene
             </button>
             {/* Kök layout çökmüşken next/link'e güvenilmez: tam sayfa yükleme. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="dugme dugme-hat">
               Kataloğa Dön
             </a>

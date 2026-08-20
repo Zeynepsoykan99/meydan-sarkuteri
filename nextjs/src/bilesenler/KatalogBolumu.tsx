@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { KartVerisi, Reyon } from "@/lib/tipler";
 import { indirimYuzde, sadelestir } from "@/lib/bicim";
 import UrunKarti from "./UrunKarti";
-import { katalogDurumu } from "./KatalogDurumu";
+import { useKatalogDurumu } from "./KatalogDurumu";
 
 /* İstemci adası: arama, reyon, sıralama, indirim ve fiyat aralığı.
 
@@ -21,7 +21,7 @@ export default function KatalogBolumu({
   reyonlar: Reyon[];
 }) {
   /* reyon artık bağlamdan: şerit yapışkan başlıkta duruyor, burada değil. */
-  const { arama, reyon, reyonYaz } = katalogDurumu();
+  const { arama, reyon, reyonYaz } = useKatalogDurumu();
   const [siralama, setSiralama] = useState<Siralama>("onerilen");
   const [indirimli, setIndirimli] = useState(false);
   const [enAz, setEnAz] = useState("");
@@ -150,9 +150,14 @@ export default function KatalogBolumu({
           </div>
         ) : (
           <div className="izgara">
-            {liste.map((u) => (
-              <UrunKarti key={u.id} u={u} reyonAdi={reyonAdlari.get(u.reyon)}
-                         reyonGoster={reyon === "hepsi"} />
+            {liste.map((u, i) => (
+              <UrunKarti
+                key={u.id}
+                u={u}
+                reyonAdi={reyonAdlari.get(u.reyon)}
+                reyonGoster={reyon === "hepsi"}
+                oncelikli={i < 4}
+              />
             ))}
           </div>
         )}

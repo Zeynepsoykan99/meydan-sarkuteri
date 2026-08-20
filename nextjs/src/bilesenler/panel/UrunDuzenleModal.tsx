@@ -3,14 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import type { Urun } from "@/lib/tipler";
 import { sayiyaCevir } from "@/lib/bicim";
+import type { Yama } from "@/lib/yonetici";
 import FiyatOnayModal from "./FiyatOnayModal";
 
 interface UrunDuzenleModalProps {
   urun: Urun | null;
   reyonAdi: string;
   onKapat: () => void;
-  onGuncelle: (yama: any, onceki: Urun) => Promise<{ basarili: boolean; uyarilar?: string[]; hatalar?: string[] }>;
-  onHizliOnay: (u: Urun) => Promise<boolean>;
+  onGuncelle: (
+    yama: Yama,
+    eskiUrun: Urun,
+  ) => Promise<{ basarili: boolean; uyarilar?: string[]; hatalar?: string[] }>;
+  onHizliOnay: (urun: Urun) => Promise<boolean>;
   onSilIstegi?: (urun: Urun) => void;
 }
 
@@ -26,34 +30,24 @@ export default function UrunDuzenleModal({
 }: UrunDuzenleModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const [fiyatStr, setFiyatStr] = useState("");
-  const [indirimli, setIndirimli] = useState(false);
-  const [eskiFiyatStr, setEskiFiyatStr] = useState("");
-  const [stokta, setStokta] = useState(true);
-  const [miktarStr, setMiktarStr] = useState("");
-  const [birim, setBirim] = useState("");
+  const [fiyatStr, setFiyatStr] = useState(() => (urun ? String(urun.fiyat).replace(".", ",") : ""));
+  const [indirimli, setIndirimli] = useState(() => Boolean(urun?.eskiFiyat));
+  const [eskiFiyatStr, setEskiFiyatStr] = useState(() => (urun?.eskiFiyat ? String(urun.eskiFiyat).replace(".", ",") : ""));
+  const [stokta, setStokta] = useState(() => (urun ? urun.stokta !== false : true));
+  const [miktarStr, setMiktarStr] = useState(() => (urun?.miktar ? String(urun.miktar).replace(".", ",") : ""));
+  const [birim, setBirim] = useState(() => urun?.birim ?? "");
 
   const [hatalar, setHatalar] = useState<string[]>([]);
   const [uyarilar, setUyarilar] = useState<string[]>([]);
   const [oncekiUrun, setOncekiUrun] = useState<Urun | null>(null);
   const [islemde, setIslemde] = useState(false);
-  const [sicramaBekliyor, setSicramaBekliyor] = useState<{ eski: number; yeni: number; yama: any } | null>(null);
+  const [sicramaBekliyor, setSicramaBekliyor] = useState<{ eski: number; yeni: number; yama: Yama } | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     if (urun) {
-      setFiyatStr(String(urun.fiyat).replace(".", ","));
-      setIndirimli(Boolean(urun.eskiFiyat));
-      setEskiFiyatStr(urun.eskiFiyat ? String(urun.eskiFiyat).replace(".", ",") : "");
-      setStokta(urun.stokta !== false);
-      setMiktarStr(urun.miktar ? String(urun.miktar).replace(".", ",") : "");
-      setBirim(urun.birim ?? "");
-      setHatalar([]);
-      setUyarilar([]);
-      setOncekiUrun(null);
-
       if (!dialog.open) dialog.showModal();
     } else {
       if (dialog.open) dialog.close();
@@ -84,25 +78,25 @@ export default function UrunDuzenleModal({
     const m = sayiyaCevir(miktarStr);
     const b = birim || null;
 
-    const yama: any = { id: urun!.id };
+    const yama: Yama = { id: urun!.id };
     const gecerli = (v: unknown) => v !== null && !Number.isNaN(v as number);
 
-    if (gecerli(f) && f !== urun!.fiyat) yama.fiyat = f;
+    if (gecerli(f) && f !== urun!.fiyat) yama.fiyat = f as number;
     if (indirimli) {
-      if (gecerli(ef) && ef !== urun!.eskiFiyat) yama.eskiFiyat = ef;
+      if (gecerli(ef) && ef !== urun!.eskiFiyat) yama.eskiFiyat = ef as number;
     } else if (urun!.eskiFiyat) {
       yama.eskiFiyat = null;
     }
 
     if (stokta !== (urun!.stokta !== false)) yama.stokta = stokta;
     // NaN'da miktara DOKUNMA: yoksa geçersiz girdi ölçüyü siler
-    if (!Number.isNaN(m as number) && m !== urun!.miktar) yama.miktar = m;
+    if (!Number.isNaN(m as number) && m !== urun!.miktar) yama.miktar = m as number;
     if (b !== (urun!.birim ?? null)) yama.birim = b;
 
     return { yama, f, ef, m, b };
   }
 
-  async function kaydet(yama: any) {
+  async function kaydet(yama: Yama) {
     if (!urun) return;
     setIslemde(true);
     setHatalar([]);

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Reyon, Urun } from "@/lib/tipler";
+import type { Yama } from "@/lib/yonetici";
 import { para, sadelestir } from "@/lib/bicim";
 import UrunDuzenleModal from "./UrunDuzenleModal";
 import UrunEkleModal from "./UrunEkleModal";
@@ -16,11 +17,19 @@ export default function PanelArayuzu() {
   const router = useRouter();
 
   const [yukleniyor, setYukleniyor] = useState(true);
-  const [kullaniciAdi, setKullaniciAdi] = useState("");
+  const [kullaniciAdi, setKullaniciAdi] = useState<string | null>(null);
   const [urunler, setUrunler] = useState<Urun[]>([]);
   const [reyonlar, setReyonlar] = useState<Reyon[]>([]);
   const [yedekDamgasi, setYedekDamgasi] = useState<string | null>(null);
-  const [yedekKapatildi, setYedekKapatildi] = useState(false);
+  const [yedekKapatildi, setYedekKapatildi] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(SERIT_ANAHTAR) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [simdi, setSimdi] = useState<number | null>(null);
 
   const [arama, setArama] = useState("");
   const [seciliReyon, setSeciliReyon] = useState("hepsi");
@@ -36,13 +45,6 @@ export default function PanelArayuzu() {
 
   // Veri yükleme
   useEffect(() => {
-    try {
-      const kapali = localStorage.getItem(SERIT_ANAHTAR);
-      if (kapali === "1") setYedekKapatildi(true);
-    } catch {
-      // devam et
-    }
-
     async function verileriYukle() {
       try {
         const res = await fetch("/api/yonetici/urunler", { cache: "no-store" });
@@ -56,6 +58,7 @@ export default function PanelArayuzu() {
         setUrunler(veri.urunler ?? []);
         setReyonlar(veri.reyonlar ?? []);
         setYedekDamgasi(veri.yedekDamgasi ?? null);
+        setSimdi(Date.now());
 
         // Kullanıcı adını öğren
         const otRes = await fetch("/api/oturum", { cache: "no-store" });
@@ -200,7 +203,7 @@ export default function PanelArayuzu() {
 
   // Modal Güncelleme
   async function handleGuncelle(
-    yama: any,
+    yama: Yama,
     onceki: Urun
   ): Promise<{ basarili: boolean; uyarilar?: string[]; hatalar?: string[] }> {
     try {
@@ -283,10 +286,10 @@ export default function PanelArayuzu() {
 
   // Yedek eskiliği
   const yedekEskiMi = useMemo(() => {
-    if (!yedekDamgasi) return true;
-    const gun = (Date.now() - new Date(yedekDamgasi).getTime()) / (1000 * 60 * 60 * 24);
+    if (!yedekDamgasi || simdi === null) return false;
+    const gun = (simdi - new Date(yedekDamgasi).getTime()) / (1000 * 60 * 60 * 24);
     return gun >= YEDEK_ESKI_GUN;
-  }, [yedekDamgasi]);
+  }, [yedekDamgasi, simdi]);
 
   if (yukleniyor) {
     return (
@@ -353,8 +356,8 @@ export default function PanelArayuzu() {
           >
             <p className="flex-1">
               ⚠️ <strong>Yedek uyarısı:</strong> Son veri yedeği{" "}
-              {yedekDamgasi
-                ? `${new Date(yedekDamgasi).toLocaleDateString("tr-TR")} tarihli (${Math.round((Date.now() - new Date(yedekDamgasi).getTime()) / (1000 * 60 * 60 * 24))} gün önce).`
+              {yedekDamgasi && simdi
+                ? `${new Date(yedekDamgasi).toLocaleDateString("tr-TR")} tarihli (${Math.round((simdi - new Date(yedekDamgasi).getTime()) / (1000 * 60 * 60 * 24))} gün önce).`
                 : "bulunamadı."}{" "}
               Yeni fiyatların kaybolmaması için kök dizinden <code>npm run yedek-al</code> komutunu çalıştırın.
             </p>
@@ -600,6 +603,7 @@ export default function PanelArayuzu() {
       {/* Düzenleme Modalı */}
       {duzenlenenUrun && (
         <UrunDuzenleModal
+          key={duzenlenenUrun.id}
           urun={duzenlenenUrun}
           reyonAdi={reyonAdlari.get(duzenlenenUrun.reyon) ?? ""}
           onKapat={() => setDuzenlenenUrun(null)}

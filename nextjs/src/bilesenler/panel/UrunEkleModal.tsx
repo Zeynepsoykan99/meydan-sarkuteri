@@ -39,24 +39,11 @@ export default function UrunEkleModal({
     if (!dialog) return;
 
     if (acik) {
-      setAd("");
-      setReyon(reyonlar[0]?.id ?? "");
-      setFiyatStr("");
-      setIndirimli(false);
-      setEskiFiyatStr("");
-      setStokta(true);
-      setMiktarStr("");
-      setBirim("");
-      setGorsel("");
-      setHatalar([]);
-      setGorselHata(false);
-      setIslemde(false);
-
       if (!dialog.open) dialog.showModal();
     } else {
       if (dialog.open) dialog.close();
     }
-  }, [acik, reyonlar]);
+  }, [acik]);
 
   function formuSifirla() {
     setAd("");
@@ -98,7 +85,7 @@ export default function UrunEkleModal({
     }
 
     let m: number | null = null;
-    let b: string | null = birim || null;
+    const b = birim || null;
     if (miktarStr.trim()) {
       m = sayiyaCevir(miktarStr);
       if (m === null || Number.isNaN(m as number) || !(m > 0)) {

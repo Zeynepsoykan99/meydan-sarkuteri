@@ -52,9 +52,9 @@ export async function GET() {
         guncellendi: (damga[0]?.en_son as Date | null)?.toISOString() ?? null,
         yedekDamgasi: yedekDamgasi(),
         reyonlar: reyonlar as Reyon[],
-        urunler: (urunler as any[]).map((u) => ({
+        urunler: (urunler as Record<string, unknown>[]).map((u) => ({
           ...urunYuku(u, true),
-          fiyatGecmisiSayisi: gecmis.get(u.id) ?? 0,
+          fiyatGecmisiSayisi: gecmis.get(u.id as string) ?? 0,
         })),
       },
       { status: 200, headers: { "Cache-Control": "no-store" } }

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import type { Reyon } from "@/lib/tipler";
-import { katalogDurumu } from "./KatalogDurumu";
+import { useKatalogDurumu } from "./KatalogDurumu";
 
 /* Reyon şeridi — yapışkan başlığın parçası, eski sitedeki gibi.
    Önceden katalog bölümünün içindeydi ve aşağı kaydırınca ekrandan
@@ -20,7 +20,7 @@ export default function ReyonSerit({
   sayilar: Record<string, number>;
   toplam: number;
 }) {
-  const { reyon, reyonYaz } = katalogDurumu();
+  const { reyon, reyonYaz } = useKatalogDurumu();
   const router = useRouter();
   const yol = usePathname();
 

@@ -24,8 +24,6 @@ export default function UrunSilModal({
     if (!dialog) return;
 
     if (urun) {
-      setIslemde(false);
-      setHata(null);
       if (!dialog.open) dialog.showModal();
     } else {
       if (dialog.open) dialog.close();

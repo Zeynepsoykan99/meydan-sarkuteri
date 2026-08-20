@@ -16,6 +16,7 @@ tests/
 .gecici-sifre.txt
 
 # Vanilla site dosyaları — artık sunulmuyorlar
+index.html
 afis.html
 giris.html
 panel.html

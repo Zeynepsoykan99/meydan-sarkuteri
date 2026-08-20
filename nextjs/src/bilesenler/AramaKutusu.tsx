@@ -1,9 +1,9 @@
 "use client";
 
-import { katalogDurumu } from "./KatalogDurumu";
+import { useKatalogDurumu } from "./KatalogDurumu";
 
 export default function AramaKutusu() {
-  const { arama, aramaYaz } = katalogDurumu();
+  const { arama, aramaYaz } = useKatalogDurumu();
 
   return (
     <form

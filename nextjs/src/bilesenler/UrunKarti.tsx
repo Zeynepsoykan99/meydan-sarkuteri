@@ -6,11 +6,15 @@ import { etiketParcalari, indirimYuzde } from "@/lib/bicim";
    470 görsel zaten uzak CDN'de 400×400; iyileştirici dönüştürme kotası
    harcar, kazanç düşük. Bu aşamanın ölçütü "birebir aynı görünmeli". */
 export default function UrunKarti({
-  u, reyonAdi, reyonGoster = true,
+  u,
+  reyonAdi,
+  reyonGoster = true,
+  oncelikli = false,
 }: {
   u: KartVerisi;
   reyonAdi?: string;
   reyonGoster?: boolean;
+  oncelikli?: boolean;
 }) {
   const yok = !u.stokta;
   const yuzde = indirimYuzde(u);
@@ -33,8 +37,16 @@ export default function UrunKarti({
         ) : null}
         {u.gorsel && (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img className="kart-gorsel" src={u.gorsel} alt={u.ad}
-               loading="lazy" decoding="async" width={400} height={400} />
+          <img
+            className="kart-gorsel"
+            src={u.gorsel}
+            alt={u.ad}
+            loading={oncelikli ? "eager" : "lazy"}
+            decoding={oncelikli ? "sync" : "async"}
+            fetchPriority={oncelikli ? "high" : "low"}
+            width={400}
+            height={400}
+          />
         )}
       </div>
 

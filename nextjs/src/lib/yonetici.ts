@@ -9,21 +9,21 @@ export type UrunYuku = Urun & {
   guncellendi?: string | Date | null;
 };
 
-export function urunYuku(u: any, damgaEkle = false): UrunYuku {
+export function urunYuku(u: Record<string, unknown>, damgaEkle = false): UrunYuku {
   const sayi = (v: unknown) => (v === null || v === undefined ? null : Number(v));
   const yuk: UrunYuku = {
-    id: u.id,
-    ad: u.ad,
-    reyon: u.reyon,
-    gorsel: u.gorsel ?? null,
+    id: String(u.id ?? ""),
+    ad: String(u.ad ?? ""),
+    reyon: String(u.reyon ?? ""),
+    gorsel: (u.gorsel as string) ?? null,
     fiyat: sayi(u.fiyat) ?? 0,
     eskiFiyat: sayi(u.eski_fiyat ?? u.eskiFiyat),
-    kaynak: u.kaynak ?? null,
+    kaynak: (u.kaynak as string) ?? null,
     miktar: sayi(u.miktar),
-    birim: u.birim ?? null,
-    stokta: u.stokta,
+    birim: (u.birim as string) ?? null,
+    stokta: Boolean(u.stokta),
   };
-  if (damgaEkle && u.guncellendi) yuk.guncellendi = u.guncellendi;
+  if (damgaEkle && u.guncellendi) yuk.guncellendi = u.guncellendi as string | Date;
   return yuk;
 }
 
@@ -45,10 +45,10 @@ export type Yama = {
   [key: string]: unknown;
 };
 
-export function yamaDogrula(mevcut: any, yama: Yama) {
+export function yamaDogrula(mevcut: Record<string, unknown>, yama: Yama) {
   const hatalar: string[] = [];
 
-  const bilinmeyen = Object.keys(yama).filter((k) => k !== "id" && !DUZENLENEBILIR.includes(k as any));
+  const bilinmeyen = Object.keys(yama).filter((k) => k !== "id" && !DUZENLENEBILIR.includes(k as (typeof DUZENLENEBILIR)[number]));
   for (const k of bilinmeyen) {
     hatalar.push(`"${k}" alanı düzenlenemez. Düzenlenebilir alanlar: ${DUZENLENEBILIR.join(", ")}`);
   }
@@ -119,7 +119,7 @@ export function yamaDogrula(mevcut: any, yama: Yama) {
     }
   }
   if (verildi("birim") && yeniBirim !== null && yeniBirim !== undefined) {
-    if (typeof yeniBirim !== "string" || !GECERLI_BIRIMLER.includes(yeniBirim as any)) {
+    if (typeof yeniBirim !== "string" || !GECERLI_BIRIMLER.includes(yeniBirim as Birim)) {
       hatalar.push(`birim yalnızca ${GECERLI_BIRIMLER.join(", ")} olabilir (gelen: ${JSON.stringify(yama.birim)})`);
       yeniBirim = null;
     }
@@ -181,7 +181,7 @@ export type YeniUrunGirdisi = {
   gorsel?: string | null;
 };
 
-export function yeniUrunDogrula(girdi: any, gecerliReyonlar?: string[]) {
+export function yeniUrunDogrula(girdi: Record<string, unknown> | null | undefined, gecerliReyonlar?: string[]) {
   const hatalar: string[] = [];
 
   // ad
@@ -249,7 +249,7 @@ export function yeniUrunDogrula(girdi: any, gecerliReyonlar?: string[]) {
   }
 
   if (b !== null) {
-    if (!GECERLI_BIRIMLER.includes(b as any)) {
+    if (!GECERLI_BIRIMLER.includes(b as Birim)) {
       hatalar.push(`Birim yalnızca ${GECERLI_BIRIMLER.join(", ")} olabilir`);
     } else {
       temizBirim = b;

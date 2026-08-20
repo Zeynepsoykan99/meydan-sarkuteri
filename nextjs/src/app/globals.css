@@ -313,13 +313,16 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* İndirim rozeti vurgu: hafif nabız */
+/* İndirim rozeti vurgu: açılışta 2 kez nabız, hover'da tek tetikleme */
 @keyframes rozet-nabiz {
   0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.04); }
+  50%      { transform: scale(1.05); }
 }
 .kart-rozet {
-  animation: rozet-nabiz 2s ease-in-out infinite;
+  animation: rozet-nabiz 1.5s ease-in-out 2 forwards;
+}
+.kart:hover .kart-rozet {
+  animation: rozet-nabiz 0.8s ease-in-out 1;
 }
 
 /* =====================================================================

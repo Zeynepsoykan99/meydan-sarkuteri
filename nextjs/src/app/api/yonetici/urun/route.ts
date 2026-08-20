@@ -47,9 +47,9 @@ export async function PATCH(req: Request) {
       );
     }
 
-    let govde: any;
+    let govde: Record<string, unknown> | null;
     try {
-      govde = await req.json();
+      govde = (await req.json()) as Record<string, unknown>;
     } catch {
       govde = null;
     }
@@ -88,7 +88,7 @@ export async function PATCH(req: Request) {
       Object.prototype.hasOwnProperty.call(govde, k)
     );
     const taninmayan = Object.keys(govde).filter(
-      (k) => k !== "id" && !DUZENLENEBILIR.includes(k as any)
+      (k) => k !== "id" && !DUZENLENEBILIR.includes(k as (typeof DUZENLENEBILIR)[number])
     );
 
     if (dokunulan.length === 0 && taninmayan.length === 0) {
@@ -186,9 +186,9 @@ export async function POST(req: Request) {
       );
     }
 
-    let govde: any;
+    let govde: Record<string, unknown> | null;
     try {
-      govde = await req.json();
+      govde = (await req.json()) as Record<string, unknown>;
     } catch {
       govde = null;
     }

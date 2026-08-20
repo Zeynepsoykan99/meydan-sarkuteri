@@ -53,9 +53,9 @@ export async function POST(req: Request) {
       );
     }
 
-    let govde: any;
+    let govde: Record<string, unknown> | null;
     try {
-      govde = await req.json();
+      govde = (await req.json()) as Record<string, unknown>;
     } catch {
       govde = null;
     }
