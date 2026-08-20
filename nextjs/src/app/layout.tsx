@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import "./globals.css";
 
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   description:
     "Meydan Şarküteri (Çarşamba / Samsun) ürün kataloğu: 470 ürün, güncel etiket " +
     "fiyatlarıyla. Her gün 07:30 – 22:00 açık.",
+  manifest: "/manifest.json",
   openGraph: {
     type: "website",
     locale: "tr_TR",
@@ -42,6 +43,14 @@ export const metadata: Metadata = {
     ],
   },
   twitter: { card: "summary_large_image" },
+};
+
+/* theme-color metadata.other ile değil viewport ile veriliyor: Next 16'nın
+   desteklediği API bu. Değer temadaki --color-kirmizi ile aynı olmalı;
+   meta etiketi CSS değişkeni okuyamadığı için tek yer burası ve
+   public/manifest.json. Tema kırmızısı değişirse ikisi de güncellenmeli. */
+export const viewport: Viewport = {
+  themeColor: "#d6202a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
