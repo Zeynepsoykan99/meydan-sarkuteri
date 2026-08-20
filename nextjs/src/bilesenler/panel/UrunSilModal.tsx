@@ -34,6 +34,8 @@ export default function UrunSilModal({
 
   if (!urun) return null;
 
+  const gecmisAdet = urun.fiyatGecmisiSayisi ?? 0;
+
   async function handleSil() {
     if (!urun) return;
     setIslemde(true);
@@ -95,9 +97,22 @@ export default function UrunSilModal({
           </div>
         </div>
 
+        {/* Onay metni ürünün ADINI ve birlikte silinecek fiyat geçmişi
+            sayısını söylüyor. Geçmiş kayıtları fiyat_gecmisi'ne CASCADE bağlı;
+            önceden sessizce siliniyordu ve metin bundan hiç söz etmiyordu. */}
         <p className="mt-4 text-[14px] leading-relaxed text-murekkep-soluk">
-          Bu ürün katalogdan ve veritabanından kalıcı olarak kaldırılacaktır. Bu
-          işlem geri alınamaz.
+          <strong className="text-murekkep">“{urun.ad}”</strong> katalogdan ve
+          veritabanından kalıcı olarak kaldırılacak.
+          {gecmisAdet > 0 && (
+            <>
+              {" "}Bu ürünün{" "}
+              <strong className="text-murekkep">
+                {gecmisAdet} fiyat değişikliği kaydı
+              </strong>{" "}
+              da silinecek.
+            </>
+          )}{" "}
+          Bu işlem <strong className="text-murekkep">geri alınamaz</strong>.
         </p>
 
         {hata && (

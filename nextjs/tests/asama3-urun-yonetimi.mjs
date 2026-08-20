@@ -219,6 +219,123 @@ try {
     eklenenTestUrunId = null;
   }
 } finally {
+  /* ═══════ 6. DELETE ucunun kapıları (J1) ═══════ */
+  bolum("6 — DELETE kapıları: Content-Type ve id kaynağı");
+  {
+    /* GERİLEME NÖBETİ. DELETE, PATCH/POST'un aksine Content-Type kapısından
+       geçmiyordu ve id'yi sorgu dizesinden de kabul ediyordu: en yıkıcı uç
+       en zayıf korunanıydı. Gövdesiz bir istek bile silebiliyordu. */
+    const [{ id: kurban }] = await sql`
+      INSERT INTO urunler (ad, reyon, fiyat, kaynak)
+      VALUES ('SINAMA J1 silinecek', 'kahvaltilik', 12.34, 'dukkan')
+      RETURNING id`;
+
+    const duzMetin = await fetch(`${B}/api/yonetici/urun`, {
+      method: "DELETE",
+      headers: { "Content-Type": "text/plain", Cookie: oturumCerezi },
+      body: JSON.stringify({ id: kurban }),
+    });
+    duzMetin.status === 415
+      ? ok("text/plain gövdeyle DELETE 415 ile reddediliyor")
+      : no(`text/plain → ${duzMetin.status}, 415 bekleniyordu`);
+
+    const sorguDizesi = await fetch(`${B}/api/yonetici/urun?id=${kurban}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: oturumCerezi },
+    });
+    sorguDizesi.status === 400
+      ? ok("?id= ile silme artık çalışmıyor (400) — id yalnızca gövdeden")
+      : no(`?id= → ${sorguDizesi.status}, 400 bekleniyordu`);
+
+    const hala = await sql`SELECT id FROM urunler WHERE id = ${kurban}`;
+    hala.length === 1
+      ? ok("reddedilen iki istekten sonra ürün HÂLÂ duruyor")
+      : no("ürün silinmiş — kapılar sızdırıyor");
+
+    const cerezsiz = await fetch(`${B}/api/yonetici/urun`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: kurban }),
+    });
+    cerezsiz.status === 401
+      ? ok("çerezsiz DELETE 401")
+      : no(`çerezsiz → ${cerezsiz.status}`);
+
+    const gecerli = await fetch(`${B}/api/yonetici/urun`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: oturumCerezi },
+      body: JSON.stringify({ id: kurban }),
+    });
+    gecerli.status === 200
+      ? ok("gövdeyle geçerli DELETE 200")
+      : no(`gövdeyle → ${gecerli.status}`);
+
+    const gitti = await sql`SELECT id FROM urunler WHERE id = ${kurban}`;
+    gitti.length === 0 ? ok("ürün gerçekten silindi") : no("ürün duruyor");
+  }
+
+  /* ═══════ 7. Fiyat geçmişi sayımı (J2) ═══════ */
+  bolum("7 — Silme onayı için fiyat geçmişi sayısı");
+  {
+    const [{ id: gecmisli }] = await sql`
+      INSERT INTO urunler (ad, reyon, fiyat, kaynak)
+      VALUES ('SINAMA J2 gecmisli', 'kahvaltilik', 10.00, 'dukkan')
+      RETURNING id`;
+    // üç fiyat değişikliği → trigger üç kayıt atmalı
+    for (const f of [11, 12, 13]) {
+      await sql`UPDATE urunler SET fiyat = ${f} WHERE id = ${gecmisli}`;
+    }
+
+    const liste = await (await fetch(`${B}/api/yonetici/urunler`, {
+      headers: { Cookie: oturumCerezi }, cache: "no-store",
+    })).json();
+    const kayit = liste.urunler.find((u) => u.id === gecmisli);
+    kayit?.fiyatGecmisiSayisi === 3
+      ? ok("panel listesi fiyatGecmisiSayisi=3 bildiriyor")
+      : no(`fiyatGecmisiSayisi: ${kayit?.fiyatGecmisiSayisi}, 3 bekleniyordu`);
+
+    // İPTAL benzetimi: silme isteği HİÇ gönderilmezse kayıt durmalı
+    const iptalSonrasi = await sql`SELECT id FROM urunler WHERE id = ${gecmisli}`;
+    const gecmisDuruyor = await sql`SELECT count(*)::int c FROM fiyat_gecmisi WHERE urun_id = ${gecmisli}`;
+    iptalSonrasi.length === 1 && gecmisDuruyor[0].c === 3
+      ? ok("iptal edilince ürün ve 3 geçmiş kaydı yerinde duruyor")
+      : no("iptal sonrası veri bozulmuş");
+
+    const sil = await fetch(`${B}/api/yonetici/urun`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: oturumCerezi },
+      body: JSON.stringify({ id: gecmisli }),
+    });
+    const silVeri = await sil.json();
+    silVeri.silinenFiyatGecmisi === 3
+      ? ok("DELETE yanıtı silinenFiyatGecmisi=3 bildiriyor")
+      : no(`silinenFiyatGecmisi: ${silVeri.silinenFiyatGecmisi}`);
+
+    const kalanGecmis = await sql`SELECT count(*)::int c FROM fiyat_gecmisi WHERE urun_id = ${gecmisli}`;
+    kalanGecmis[0].c === 0
+      ? ok("CASCADE ile fiyat geçmişi de silindi")
+      : no(`${kalanGecmis[0].c} yetim kayıt kaldı`);
+  }
+
+  /* ═══════ 8. PWA ikonları (J4) ═══════ */
+  bolum("8 — PWA ikonları manifestle uyuşuyor mu");
+  {
+    const man = await (await fetch(`${B}/manifest.json`)).json();
+    for (const ikon of man.icons) {
+      const y = await fetch(B + ikon.src);
+      const buf = Buffer.from(await y.arrayBuffer());
+      // PNG imzası: 89 50 4E 47
+      const png = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+      // IHDR: 16..24 arası genişlik/yükseklik
+      const en = buf.readUInt32BE(16), boy = buf.readUInt32BE(20);
+      const [bekEn, bekBoy] = ikon.sizes.split("x").map(Number);
+      png ? ok(`${ikon.src} gerçekten PNG`) : no(`${ikon.src} PNG DEĞİL`);
+      en === bekEn && boy === bekBoy
+        ? ok(`${ikon.src} ${en}x${boy} — manifestteki ${ikon.sizes} ile aynı`)
+        : no(`${ikon.src} ${en}x${boy}, manifest ${ikon.sizes} diyor`);
+    }
+  }
+
   /* ═══════ Temizlik ═══════ */
   if (eklenenTestUrunId) {
     await sql`DELETE FROM urunler WHERE id = ${eklenenTestUrunId}`;

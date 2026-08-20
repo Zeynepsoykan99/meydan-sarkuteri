@@ -12,8 +12,13 @@ export type Urun = {
   miktar: number | null;
   birim: string | null;
   stokta: boolean;
+  /** panel-özel, bkz. yukarıdaki not */
+  fiyatGecmisiSayisi?: number;
 };
 
+/* PANEL-ÖZEL, opsiyonel: /api/yonetici/urunler bu alanı dolduruyor.
+   Silme onayında "kaç fiyat kaydı da gidecek" diyebilmek için. Ziyaretçi
+   tarafındaki yollarda hiç set edilmiyor, o yüzden opsiyonel. */
 export type Reyon = {
   id: string;
   ad: string;

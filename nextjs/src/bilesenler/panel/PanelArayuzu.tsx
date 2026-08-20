@@ -586,16 +586,10 @@ export default function PanelArayuzu() {
                     </span>
                   </button>
 
-                  {/* Silme Butonu */}
-                  <button
-                    type="button"
-                    onClick={() => setSilinecekUrun(u)}
-                    aria-label={`Ürünü sil: ${u.ad}`}
-                    title="Ürünü sil"
-                    className="grid min-h-[44px] w-10 place-content-center rounded-orta border-[1.5px] border-cizgi bg-beyaz text-murekkep-soluk transition-colors hover:border-kirmizi hover:bg-kirmizi-sis hover:text-kirmizi"
-                  >
-                    <span className="text-sm">🗑️</span>
-                  </button>
+                  {/* Satır içi silme düğmesi BİLEREK YOK. Silme geri alınamaz
+                      ve fiyat geçmişini de götürüyor; listede yanlış satıra
+                      dokunmakla erişilebilir olmamalı. Tek giriş noktası
+                      düzenleme modalı. */}
                 </div>
               );
             })}

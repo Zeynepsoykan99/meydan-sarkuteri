@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { sqlAl } from "@/lib/veritabani";
 import { oturumDogrula } from "@/lib/auth";
 import {
@@ -8,6 +9,18 @@ import {
   fiyatUyarilari,
   DUZENLENEBILIR,
 } from "@/lib/yonetici";
+
+/* Katalog önbelleğini elle tazele.
+   cacheLife("minutes") yüzünden panelden yapılan bir değişiklik ziyaretçiye
+   bir dakikaya kadar gecikmeyle yansıyordu; ürün EKLENİP SİLİNDİĞİNDE bu
+   daha da yanıltıcıydı (olmayan ürün listede durmaya devam ediyordu).
+   Bu çağrılar daha önce src/app/panel/actions.ts içindeydi ama o dosya
+   hiçbir yerden çağrılmıyordu — yani tazeleme hiç çalışmıyordu. Dosya
+   silindi, çağrılar gerçekten kullanılan yola taşındı. */
+function tazele() {
+  revalidatePath("/");
+  revalidatePath("/panel");
+}
 
 /* =====================================================================
    Yönetici Ürün API Uçları:
@@ -135,6 +148,8 @@ export async function PATCH(req: Request) {
       `alanlar=[${dokunulan.join(", ")}], fiyat: ${mevcut.fiyat} → ${yeniFiyat}`
     );
 
+    tazele();
+
     return NextResponse.json(
       {
         guncellendi: true,
@@ -217,6 +232,8 @@ export async function POST(req: Request) {
       `fiyat=₺${yeni.fiyat}, kullanıcı="${oturum.kullanici_adi}"`
     );
 
+    tazele();
+
     return NextResponse.json(
       {
         eklendi: true,
@@ -234,6 +251,18 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  /* Content-Type kapısı, PATCH ve POST ile aynı — basit CSRF koruması.
+     Tarayıcı başka bir kaynaktaki formdan JSON content-type'ıyla istek
+     atamaz (preflight gerekir), düz form gönderimi buradan geçemez.
+     Bu kapı DELETE'te yoktu; en yıkıcı uç en zayıf korunanıydı. */
+  const tur = req.headers.get("content-type") ?? "";
+  if (!tur.toLowerCase().includes("application/json")) {
+    return NextResponse.json(
+      { hata: "Content-Type application/json olmalı" },
+      { status: 415, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   try {
     const oturum = await oturumDogrula();
     if (!oturum) {
@@ -243,21 +272,16 @@ export async function DELETE(req: Request) {
       );
     }
 
+    /* id YALNIZCA gövdeden. Sorgu dizesi desteği (?id=u005) kaldırıldı:
+       silme adresi bağlantıya, geçmişe, sunucu günlüğüne ve Referer
+       başlığına düşebilir hale geliyordu; üstelik Content-Type kapısını
+       anlamsızlaştırıyordu, çünkü gövdesiz bir istek de silebiliyordu. */
     let id: string | null = null;
-
-    const tur = req.headers.get("content-type") ?? "";
-    if (tur.toLowerCase().includes("application/json")) {
-      try {
-        const govde = await req.json();
-        id = govde?.id ?? null;
-      } catch {
-        // devam et
-      }
-    }
-
-    if (!id) {
-      const url = new URL(req.url);
-      id = url.searchParams.get("id");
+    try {
+      const govde = await req.json();
+      id = govde?.id ?? null;
+    } catch {
+      // gövde okunamadı; aşağıdaki kontrol 400 verecek
     }
 
     if (typeof id !== "string" || !id.trim()) {
@@ -268,6 +292,15 @@ export async function DELETE(req: Request) {
     }
 
     const sql = sqlAl();
+
+    /* Fiyat geçmişi ürüne ON DELETE CASCADE bağlı: ürünle birlikte o da
+       gidiyor. Kaç kayıt gittiğini SİLMEDEN ÖNCE sayıyoruz ki hem denetim
+       günlüğüne hem yanıta yazabilelim — sessizce yok olmasın. */
+    const [{ gecmisAdet }] = await sql`
+      SELECT count(*)::int AS "gecmisAdet"
+        FROM fiyat_gecmisi WHERE urun_id = ${id.trim()}
+    `;
+
     const silinenler = await sql`
       DELETE FROM urunler
        WHERE id = ${id.trim()}
@@ -283,14 +316,18 @@ export async function DELETE(req: Request) {
 
     const silinen = silinenler[0];
     console.log(
-      `[DENETİM] Ürün silindi: id=${silinen.id} ("${silinen.ad}"), kullanıcı="${oturum.kullanici_adi}"`
+      `[DENETİM] Ürün silindi: id=${silinen.id} ("${silinen.ad}"), ` +
+      `kullanıcı="${oturum.kullanici_adi}", birlikte silinen fiyat geçmişi=${gecmisAdet}`
     );
+
+    tazele();
 
     return NextResponse.json(
       {
         silindi: true,
         id: silinen.id,
         ad: silinen.ad,
+        silinenFiyatGecmisi: gecmisAdet,
       },
       { status: 200, headers: { "Cache-Control": "no-store" } }
     );
