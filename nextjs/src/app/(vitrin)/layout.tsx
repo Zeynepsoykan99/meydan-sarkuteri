@@ -5,6 +5,7 @@ import DukkanSerit from "@/bilesenler/DukkanSerit";
 import DukkanBolum from "@/bilesenler/DukkanBolum";
 import Altbilgi from "@/bilesenler/Altbilgi";
 import GorselNobeti from "@/bilesenler/GorselNobeti";
+import BasaDon from "@/bilesenler/BasaDon";
 import { KatalogDurumProvider } from "@/bilesenler/KatalogDurumu";
 
 export default async function VitrinLayout({
@@ -42,6 +43,7 @@ export default async function VitrinLayout({
       <DukkanBolum />
       <Altbilgi />
       <GorselNobeti />
+      <BasaDon />
     </>
   );
 }
