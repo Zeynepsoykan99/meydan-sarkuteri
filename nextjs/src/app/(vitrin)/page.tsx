@@ -1,5 +1,5 @@
 import { katalogGetir } from "@/lib/katalog";
-import { etiketParcalari, indirimYuzde } from "@/lib/bicim";
+import { etiketParcalari, indirimYuzde, kartVerisi } from "@/lib/bicim";
 import KatalogBolumu from "@/bilesenler/KatalogBolumu";
 import Link from "next/link";
 
@@ -101,7 +101,7 @@ export default async function AnaSayfa() {
             <div className="mt-6 -mx-5 flex snap-x gap-4 overflow-x-auto px-5 pb-2"
                  role="list" tabIndex={0} aria-label="Düşen etiketler, yatay liste">
               {indirimliler.slice(0, 12).map((u) => (
-                <Link key={u.id} href={`/urun/${u.id}`} role="listitem"
+                <Link key={u.id} href={`/urun/${u.id}`} prefetch={false} role="listitem"
                       className="w-[210px] shrink-0 snap-start rounded-buyuk border-[1.5px]
                                  border-cizgi bg-beyaz p-3 text-inherit no-underline
                                  hover:border-murekkep">
@@ -121,7 +121,9 @@ export default async function AnaSayfa() {
         </section>
       )}
 
-      <KatalogBolumu urunler={urunler} reyonlar={reyonlar} />
+      {/* İstemciye TAM ürün değil, hafif kart verisi gidiyor: kaynak,
+          miktar ve birim hiç serileşmiyor (birim fiyat sunucuda hesaplandı). */}
+      <KatalogBolumu urunler={urunler.map(kartVerisi)} reyonlar={reyonlar} />
     </>
   );
 }

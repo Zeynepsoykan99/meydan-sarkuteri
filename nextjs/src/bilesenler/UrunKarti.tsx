@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { Urun } from "@/lib/tipler";
-import { birimFiyatYazi, etiketParcalari, indirimYuzde } from "@/lib/bicim";
+import type { KartVerisi } from "@/lib/tipler";
+import { etiketParcalari, indirimYuzde } from "@/lib/bicim";
 
 /* Ürün kartı. Görsel için next/image DEĞİL düz <img>:
    470 görsel zaten uzak CDN'de 400×400; iyileştirici dönüştürme kotası
@@ -8,14 +8,14 @@ import { birimFiyatYazi, etiketParcalari, indirimYuzde } from "@/lib/bicim";
 export default function UrunKarti({
   u, reyonAdi, reyonGoster = true,
 }: {
-  u: Urun;
+  u: KartVerisi;
   reyonAdi?: string;
   reyonGoster?: boolean;
 }) {
-  const yok = u.stokta === false;
+  const yok = !u.stokta;
   const yuzde = indirimYuzde(u);
   const { lira, kurus } = etiketParcalari(u.fiyat);
-  const bf = birimFiyatYazi(u);
+  const bf = u.bfYazi;   // sunucuda hesaplandı
 
   return (
     <article className={`kart${yok ? " kart-yok" : ""}`} data-id={u.id}>
@@ -45,7 +45,11 @@ export default function UrunKarti({
       )}
 
       <h3 className="mt-1 line-clamp-2 text-[15px] font-semibold leading-[1.35]" title={u.ad}>
-        <Link href={`/urun/${u.id}`} className="text-inherit no-underline
+        {/* prefetch KAPALI: Next görüş alanına giren her bağlantıyı önden
+            getiriyor. 470 kartlık bir listede bu, kullanıcı hiçbirine
+            tıklamasa bile onlarca ek istek demek — ölçümde 27 istek /
+            81 KB. Ürün sayfaları zaten statik ve hızlı. */}
+        <Link href={`/urun/${u.id}`} prefetch={false} className="text-inherit no-underline
                                                 after:absolute after:inset-0 after:content-['']">
           {u.ad}
         </Link>

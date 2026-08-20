@@ -20,7 +20,9 @@ export function etiketParcalari(fiyat: number) {
   return { lira: Number(lira).toLocaleString("tr-TR"), kurus };
 }
 
-export const indirimYuzde = (u: Urun) =>
+/* Tam Urun istemiyor: yalnızca bu iki alanı okuyor. Böylece istemciye
+   giden hafif KartVerisi de doğrudan geçirilebiliyor. */
+export const indirimYuzde = (u: { fiyat: number; eskiFiyat: number | null }) =>
   u.eskiFiyat ? Math.round((1 - u.fiyat / u.eskiFiyat) * 100) : 0;
 
 /* ---------------- birim fiyat ---------------- */
@@ -85,6 +87,25 @@ export function birimFiyatYazi(u: Urun): string {
     ? Math.round(bf.deger).toLocaleString("tr-TR")
     : bf.deger.toFixed(2).replace(".", ",");
   return `₺${sayi}/${bf.birim}`;
+}
+
+/** Sunucuda çalışır: tam Urun -> istemciye gidecek hafif KartVerisi.
+ *  Birim fiyat burada bir kez hesaplanıyor; istemci 470 ürün için regex
+ *  ayrıştırmayı tekrar yapmıyor ve miktar/birim/kaynak hiç gönderilmiyor. */
+export function kartVerisi(u: Urun): import("./tipler").KartVerisi {
+  const bf = birimFiyat(u);
+  return {
+    id: u.id,
+    ad: u.ad,
+    reyon: u.reyon,
+    gorsel: u.gorsel,
+    fiyat: u.fiyat,
+    eskiFiyat: u.eskiFiyat,
+    stokta: u.stokta !== false,
+    bfYazi: birimFiyatYazi(u),
+    bfDeger: bf ? bf.deger : Infinity,
+    bfGrup: !bf ? 2 : bf.birim === "adet" ? 1 : 0,
+  };
 }
 
 /** Türkçe arama için sadeleştirme — büyük/küçük ve aksan duyarsız. */

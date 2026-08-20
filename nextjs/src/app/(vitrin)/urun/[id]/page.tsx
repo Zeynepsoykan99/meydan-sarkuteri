@@ -73,7 +73,7 @@ export default async function UrunSayfasi(
   return (
     <article className="kucak py-10 md:py-14">
       <nav aria-label="Sayfa yolu" className="mb-6 text-[14px] text-murekkep-soluk">
-        <Link href="/" className="text-inherit no-underline hover:text-murekkep">Katalog</Link>
+        <Link href="/" prefetch={false} className="text-inherit no-underline hover:text-murekkep">Katalog</Link>
         <span aria-hidden="true"> / </span>
         <span>{reyon}</span>
       </nav>
@@ -134,7 +134,7 @@ export default async function UrunSayfasi(
             Bu sayfa bir fiyat kataloğudur; sipariş alınmaz.
           </p>
 
-          <Link href="/" className="dugme dugme-hat mt-8">← Katalog</Link>
+          <Link href="/" prefetch={false} className="dugme dugme-hat mt-8">← Katalog</Link>
         </div>
       </div>
     </article>

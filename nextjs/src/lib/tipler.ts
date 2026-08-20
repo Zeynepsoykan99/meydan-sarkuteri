@@ -20,6 +20,28 @@ export type Reyon = {
   ikon: string | null;
 };
 
+/* İSTEMCİYE GİDEN hafif ürün. Süzme ve kart çizimi için gereken alanlar
+   yalnızca. `kaynak` istemcide hiç kullanılmıyordu; `miktar`/`birim` ise
+   yalnızca birim fiyat hesabı içindi — o hesap artık sunucuda yapılıp
+   sonucu (bfYazi/bfDeger/bfGrup) geçiriliyor. Böylece hem RSC yükü
+   küçülüyor hem de 470 ürün için regex ayrıştırma istemcide tekrarlanmıyor.
+   Kökteki js/app.js de aynı şeyi yapıyordu (_bfYazi, _bf, _bfGrup). */
+export type KartVerisi = {
+  id: string;
+  ad: string;
+  reyon: string;
+  gorsel: string | null;
+  fiyat: number;
+  eskiFiyat: number | null;
+  stokta: boolean;
+  /** birim fiyat yazısı, ör. "₺129,90/kg" — boşsa gösterilmiyor */
+  bfYazi: string;
+  /** sıralama için sayısal birim fiyat; yoksa Infinity */
+  bfDeger: number;
+  /** 0 ağırlık/hacim, 1 adet, 2 birimsiz — kıyaslanabilirlik grubu */
+  bfGrup: number;
+};
+
 export type Katalog = {
   guncellendi: string | null;
   reyonlar: Reyon[];

@@ -7,7 +7,7 @@ export default function Bulunamadi() {
       <p className="mx-auto mt-3 max-w-[46ch] text-murekkep-soluk">
         Aradığın ürün kaldırılmış ya da adres yanlış olabilir.
       </p>
-      <Link href="/" className="dugme dugme-dolu mt-7">Katalog</Link>
+      <Link href="/" prefetch={false} className="dugme dugme-dolu mt-7">Katalog</Link>
     </div>
   );
 }
