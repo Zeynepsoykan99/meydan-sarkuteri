@@ -6,6 +6,8 @@ import Link from "next/link";
 import type { Reyon, Urun } from "@/lib/tipler";
 import { para, sadelestir } from "@/lib/bicim";
 import UrunDuzenleModal from "./UrunDuzenleModal";
+import UrunEkleModal from "./UrunEkleModal";
+import UrunSilModal from "./UrunSilModal";
 
 const YEDEK_ESKI_GUN = 7;
 const SERIT_ANAHTAR = "yedek-serit-kapatildi";
@@ -26,7 +28,10 @@ export default function PanelArayuzu() {
   const [olcusuzSurgu, setOlcusuzSurgu] = useState(false);
 
   const [duzenlenenUrun, setDuzenlenenUrun] = useState<Urun | null>(null);
+  const [urunEkleAcik, setUrunEkleAcik] = useState(false);
+  const [silinecekUrun, setSilinecekUrun] = useState<Urun | null>(null);
   const [hataBildirim, setHataBildirim] = useState<{ mesaj: string; oturum?: boolean } | null>(null);
+  const [basariBildirim, setBasariBildirim] = useState<string | null>(null);
   const [hizliOnaylar, setHizliOnaylar] = useState<Set<string>>(new Set());
 
   // Veri yükleme
@@ -237,6 +242,45 @@ export default function PanelArayuzu() {
     }
   }
 
+  // Yeni Ürün Eklendiğinde
+  function handleUrunEklendi(yeni: Urun) {
+    setUrunler((prev) => [yeni, ...prev]);
+    setBasariBildirim(`"${yeni.ad}" kataloğa başarıyla eklendi.`);
+    setTimeout(() => setBasariBildirim(null), 5000);
+  }
+
+  // Ürün Silme İşlemi
+  async function handleUrunSil(u: Urun): Promise<boolean> {
+    try {
+      const res = await fetch("/api/yonetici/urun", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: u.id }),
+      });
+
+      if (res.status === 401) {
+        setHataBildirim({ mesaj: "Oturum sona erdi. Tekrar giriş yapın.", oturum: true });
+        return false;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setHataBildirim({ mesaj: err?.hata ?? "Ürün silinemedi." });
+        return false;
+      }
+
+      setUrunler((prev) => prev.filter((item) => item.id !== u.id));
+      setBasariBildirim(`"${u.ad}" başarıyla silindi.`);
+      setSilinecekUrun(null);
+      setDuzenlenenUrun(null);
+      setTimeout(() => setBasariBildirim(null), 5000);
+      return true;
+    } catch {
+      setHataBildirim({ mesaj: "Bağlantı hatası. Ürün silinemedi." });
+      return false;
+    }
+  }
+
   // Yedek eskiliği
   const yedekEskiMi = useMemo(() => {
     if (!yedekDamgasi) return true;
@@ -258,7 +302,7 @@ export default function PanelArayuzu() {
     <div className="min-h-screen bg-tezgah">
       {/* Başlık */}
       <header className="sticky top-0 z-30 border-b border-cizgi bg-beyaz">
-        <div className="kucak grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-3">
+        <div className="kucak flex items-center justify-between gap-3 py-3">
           <Link href="/" className="flex items-center gap-2 text-inherit no-underline">
             <span
               className="grid size-[38px] place-items-center rounded-[10px] bg-kirmizi font-display text-xl font-extrabold text-sari shadow-[inset_0_-2px_0_rgb(0_0_0/0.16)]"
@@ -274,19 +318,29 @@ export default function PanelArayuzu() {
             </span>
           </Link>
 
-          <div className="min-w-0 text-right">
-            <span className="block truncate text-[14px] font-bold text-murekkep">
-              {kullaniciAdi}
-            </span>
-          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setUrunEkleAcik(true)}
+              className="dugme dugme-dolu min-h-11 bg-yesil hover:bg-yesil-koyu px-4 py-2 text-[14px] font-bold shadow-sm"
+            >
+              + Yeni Ürün Ekle
+            </button>
 
-          <button
-            type="button"
-            onClick={handleCikis}
-            className="dugme dugme-hat min-h-11 px-4 py-2 text-[14.5px]"
-          >
-            Çıkış
-          </button>
+            <div className="hidden min-w-0 text-right sm:block">
+              <span className="block max-w-[120px] truncate text-[13.5px] font-bold text-murekkep">
+                {kullaniciAdi}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCikis}
+              className="dugme dugme-hat min-h-11 px-3.5 py-2 text-[14px]"
+            >
+              Çıkış
+            </button>
+          </div>
         </div>
       </header>
 
@@ -531,6 +585,17 @@ export default function PanelArayuzu() {
                       {onayli ? "Onaylı" : "Onayla"}
                     </span>
                   </button>
+
+                  {/* Silme Butonu */}
+                  <button
+                    type="button"
+                    onClick={() => setSilinecekUrun(u)}
+                    aria-label={`Ürünü sil: ${u.ad}`}
+                    title="Ürünü sil"
+                    className="grid min-h-[44px] w-10 place-content-center rounded-orta border-[1.5px] border-cizgi bg-beyaz text-murekkep-soluk transition-colors hover:border-kirmizi hover:bg-kirmizi-sis hover:text-kirmizi"
+                  >
+                    <span className="text-sm">🗑️</span>
+                  </button>
                 </div>
               );
             })}
@@ -546,7 +611,44 @@ export default function PanelArayuzu() {
           onKapat={() => setDuzenlenenUrun(null)}
           onGuncelle={handleGuncelle}
           onHizliOnay={handleHizliOnay}
+          onSilIstegi={(u) => setSilinecekUrun(u)}
         />
+      )}
+
+      {/* Yeni Ürün Ekleme Modalı */}
+      <UrunEkleModal
+        acik={urunEkleAcik}
+        reyonlar={reyonlar}
+        onKapat={() => setUrunEkleAcik(false)}
+        onEklendi={handleUrunEklendi}
+      />
+
+      {/* Ürün Silme Onay Modalı */}
+      <UrunSilModal
+        urun={silinecekUrun}
+        onKapat={() => setSilinecekUrun(null)}
+        onOnay={handleUrunSil}
+      />
+
+      {/* Başarı Bildirimi (Toast) */}
+      {basariBildirim && (
+        <div
+          className="fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-[500px] items-center justify-between gap-3 rounded-orta border-2 border-yesil bg-yesil-sis p-3.5 shadow-2xl text-yesil-koyu animate-[basa-don-gir_0.3s_ease_both]"
+          role="status"
+        >
+          <div className="flex items-center gap-2.5 text-[14.5px] font-bold">
+            <span className="text-lg">✓</span>
+            <span>{basariBildirim}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBasariBildirim(null)}
+            aria-label="Kapat"
+            className="grid size-8 place-items-center rounded-full text-base hover:bg-yesil/10"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Hata Bildirimi */}

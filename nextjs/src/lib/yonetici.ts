@@ -169,3 +169,127 @@ export function fiyatUyarilari(eskiFiyat: number | string, yeniFiyat: number, re
 
   return uyarilar;
 }
+
+export type YeniUrunGirdisi = {
+  ad: string;
+  reyon: string;
+  fiyat: number;
+  eskiFiyat?: number | null;
+  miktar?: number | null;
+  birim?: string | null;
+  stokta?: boolean;
+  gorsel?: string | null;
+};
+
+export function yeniUrunDogrula(girdi: any, gecerliReyonlar?: string[]) {
+  const hatalar: string[] = [];
+
+  // ad
+  const ad = typeof girdi?.ad === "string" ? girdi.ad.trim() : "";
+  if (!ad || ad.length < 2) {
+    hatalar.push("Ürün adı en az 2 karakter olmalı");
+  } else if (ad.length > 200) {
+    hatalar.push("Ürün adı en fazla 200 karakter olabilir");
+  }
+
+  // reyon
+  const reyon = typeof girdi?.reyon === "string" ? girdi.reyon.trim() : "";
+  if (!reyon) {
+    hatalar.push("Reyon seçimi zorunlu");
+  } else if (gecerliReyonlar && gecerliReyonlar.length > 0 && !gecerliReyonlar.includes(reyon)) {
+    hatalar.push(`Geçersiz reyon: "${reyon}"`);
+  }
+
+  // fiyat
+  const f = typeof girdi?.fiyat === "number" ? girdi.fiyat : Number(girdi?.fiyat);
+  let temizFiyat = 0;
+  if (typeof f !== "number" || !isFinite(f) || isNaN(f)) {
+    hatalar.push("Fiyat geçerli bir sayı olmalı");
+  } else if (!(f > 0)) {
+    hatalar.push("Fiyat sıfırdan büyük olmalı");
+  } else if (ondalikSayisi(f) > ONDALIK_EN_FAZLA) {
+    hatalar.push(`Fiyat en fazla ${ONDALIK_EN_FAZLA} ondalık basamak içerebilir (kuruş)`);
+  } else {
+    temizFiyat = f;
+  }
+
+  // eskiFiyat
+  let temizEskiFiyat: number | null = null;
+  if (girdi?.eskiFiyat !== undefined && girdi?.eskiFiyat !== null && girdi?.eskiFiyat !== "") {
+    const ef = typeof girdi.eskiFiyat === "number" ? girdi.eskiFiyat : Number(girdi.eskiFiyat);
+    if (typeof ef !== "number" || !isFinite(ef) || isNaN(ef)) {
+      hatalar.push("İndirimden önceki fiyat sayı olmalı");
+    } else if (!(ef > 0)) {
+      hatalar.push("İndirimden önceki fiyat sıfırdan büyük olmalı");
+    } else if (ondalikSayisi(ef) > ONDALIK_EN_FAZLA) {
+      hatalar.push(`İndirimden önceki fiyat en fazla ${ONDALIK_EN_FAZLA} ondalık basamak içerebilir`);
+    } else if (temizFiyat > 0 && !(ef > temizFiyat)) {
+      hatalar.push("İndirimden önceki fiyat güncel fiyattan büyük olmalı");
+    } else {
+      temizEskiFiyat = ef;
+    }
+  }
+
+  // miktar & birim
+  let temizMiktar: number | null = null;
+  let temizBirim: string | null = null;
+  const m = girdi?.miktar !== undefined && girdi?.miktar !== null && girdi?.miktar !== ""
+    ? (typeof girdi.miktar === "number" ? girdi.miktar : Number(girdi.miktar))
+    : null;
+  const b = typeof girdi?.birim === "string" && girdi.birim.trim() ? girdi.birim.trim() : null;
+
+  if (m !== null) {
+    if (typeof m !== "number" || !isFinite(m) || isNaN(m)) {
+      hatalar.push("Miktar sayı olmalı");
+    } else if (!(m > 0)) {
+      hatalar.push("Miktar sıfırdan büyük olmalı");
+    } else {
+      temizMiktar = m;
+    }
+  }
+
+  if (b !== null) {
+    if (!GECERLI_BIRIMLER.includes(b as any)) {
+      hatalar.push(`Birim yalnızca ${GECERLI_BIRIMLER.join(", ")} olabilir`);
+    } else {
+      temizBirim = b;
+    }
+  }
+
+  if ((temizMiktar === null) !== (temizBirim === null)) {
+    hatalar.push("Miktar ve birim birlikte girilmeli veya ikisi de boş bırakılmalı");
+  }
+
+  if (temizBirim === "adet" && typeof temizMiktar === "number" && !Number.isInteger(temizMiktar)) {
+    hatalar.push('Birim "adet" olduğunda miktar tam sayı olmalı');
+  }
+
+  // stokta
+  const stokta = girdi?.stokta !== false;
+
+  // gorsel
+  let gorsel: string | null = null;
+  if (typeof girdi?.gorsel === "string" && girdi.gorsel.trim()) {
+    const g = girdi.gorsel.trim();
+    if (/^https?:\/\/.+/i.test(g) || g.startsWith("/")) {
+      gorsel = g;
+    } else {
+      hatalar.push("Görsel geçerli bir URL (http/https) veya yerel yol olmalı");
+    }
+  }
+
+  return {
+    hatalar,
+    urun: {
+      ad,
+      reyon,
+      fiyat: temizFiyat,
+      eskiFiyat: temizEskiFiyat,
+      miktar: temizMiktar,
+      birim: temizBirim,
+      stokta,
+      gorsel,
+    },
+  };
+}
+

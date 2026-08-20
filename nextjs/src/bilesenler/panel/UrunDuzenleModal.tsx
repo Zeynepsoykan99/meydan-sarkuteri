@@ -11,6 +11,7 @@ interface UrunDuzenleModalProps {
   onKapat: () => void;
   onGuncelle: (yama: any, onceki: Urun) => Promise<{ basarili: boolean; uyarilar?: string[]; hatalar?: string[] }>;
   onHizliOnay: (u: Urun) => Promise<boolean>;
+  onSilIstegi?: (urun: Urun) => void;
 }
 
 const SICRAMA = 10;
@@ -21,6 +22,7 @@ export default function UrunDuzenleModal({
   onKapat,
   onGuncelle,
   onHizliOnay,
+  onSilIstegi,
 }: UrunDuzenleModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -399,7 +401,20 @@ export default function UrunDuzenleModal({
           </div>
 
           {/* Alt Düğmeler */}
-          <div className="flex gap-2.5 border-t-[1.5px] border-cizgi bg-beyaz p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:p-5">
+          <div className="flex flex-wrap gap-2.5 border-t-[1.5px] border-cizgi bg-beyaz p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:p-5">
+            {onSilIstegi && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (urun) onSilIstegi(urun);
+                }}
+                disabled={islemde}
+                title="Ürünü sil"
+                className="dugme min-h-[52px] border-[1.5px] border-kirmizi/30 text-kirmizi hover:bg-kirmizi-sis px-4 text-[15px]"
+              >
+                🗑️ Sil
+              </button>
+            )}
             {!onaylanmis && (
               <button
                 type="button"

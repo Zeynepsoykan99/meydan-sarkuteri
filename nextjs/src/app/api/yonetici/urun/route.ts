@@ -4,9 +4,17 @@ import { oturumDogrula } from "@/lib/auth";
 import {
   urunYuku,
   yamaDogrula,
+  yeniUrunDogrula,
   fiyatUyarilari,
   DUZENLENEBILIR,
 } from "@/lib/yonetici";
+
+/* =====================================================================
+   Yönetici Ürün API Uçları:
+   - PATCH: Ürün alanlarını güncelleme
+   - POST: Yeni ürün ekleme
+   - DELETE: Ürün silme
+   ===================================================================== */
 
 export async function PATCH(req: Request) {
   const tur = req.headers.get("content-type") ?? "";
@@ -122,6 +130,11 @@ export async function PATCH(req: Request) {
                 stokta, kaynak, guncellendi
     `;
 
+    console.log(
+      `[DENETİM] Ürün güncellendi: id=${id} ("${mevcut.ad}"), kullanıcı="${oturum.kullanici_adi}", ` +
+      `alanlar=[${dokunulan.join(", ")}], fiyat: ${mevcut.fiyat} → ${yeniFiyat}`
+    );
+
     return NextResponse.json(
       {
         guncellendi: true,
@@ -132,10 +145,161 @@ export async function PATCH(req: Request) {
       { status: 200, headers: { "Cache-Control": "no-store" } }
     );
   } catch (e) {
-    console.error("yonetici/urun başarısız:", (e as Error).message);
+    console.error("yonetici/urun PATCH başarısız:", (e as Error).message);
     return NextResponse.json(
       { hata: "Ürün güncellenemedi" },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
+
+export async function POST(req: Request) {
+  const tur = req.headers.get("content-type") ?? "";
+  if (!tur.toLowerCase().includes("application/json")) {
+    return NextResponse.json(
+      { hata: "Content-Type application/json olmalı" },
+      { status: 415, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  try {
+    const oturum = await oturumDogrula();
+    if (!oturum) {
+      return NextResponse.json(
+        { hata: "Oturum gerekli" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    let govde: any;
+    try {
+      govde = await req.json();
+    } catch {
+      govde = null;
+    }
+
+    if (!govde || typeof govde !== "object" || Array.isArray(govde)) {
+      return NextResponse.json(
+        { hata: "Gövde bir JSON nesnesi olmalı" },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    const sql = sqlAl();
+    const reyonlar = await sql`SELECT id FROM reyonlar`;
+    const reyonIdleri = (reyonlar as { id: string }[]).map((r) => r.id);
+
+    const { hatalar, urun } = yeniUrunDogrula(govde, reyonIdleri);
+    if (hatalar.length > 0) {
+      return NextResponse.json(
+        {
+          hata: hatalar.length === 1 ? hatalar[0] : `${hatalar.length} alan geçersiz`,
+          hatalar,
+        },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    const eklenen = await sql`
+      INSERT INTO urunler (
+        ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim, stokta, kaynak
+      ) VALUES (
+        ${urun.ad}, ${urun.reyon}, ${urun.gorsel}, ${urun.fiyat},
+        ${urun.eskiFiyat}, ${urun.miktar}, ${urun.birim}, ${urun.stokta}, 'dukkan'
+      )
+      RETURNING id, ad, reyon, gorsel, fiyat, eski_fiyat, miktar, birim,
+                stokta, kaynak, guncellendi
+    `;
+
+    const yeni = eklenen[0];
+    console.log(
+      `[DENETİM] Yeni ürün eklendi: id=${yeni.id} ("${yeni.ad}"), reyon="${yeni.reyon}", ` +
+      `fiyat=₺${yeni.fiyat}, kullanıcı="${oturum.kullanici_adi}"`
+    );
+
+    return NextResponse.json(
+      {
+        eklendi: true,
+        urun: urunYuku(yeni, true),
+      },
+      { status: 201, headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (e) {
+    console.error("yonetici/urun POST başarısız:", (e as Error).message);
+    return NextResponse.json(
+      { hata: "Ürün eklenemedi" },   // ayrıntı günlükte; istemciye sürücü metni gitmez
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const oturum = await oturumDogrula();
+    if (!oturum) {
+      return NextResponse.json(
+        { hata: "Oturum gerekli" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    let id: string | null = null;
+
+    const tur = req.headers.get("content-type") ?? "";
+    if (tur.toLowerCase().includes("application/json")) {
+      try {
+        const govde = await req.json();
+        id = govde?.id ?? null;
+      } catch {
+        // devam et
+      }
+    }
+
+    if (!id) {
+      const url = new URL(req.url);
+      id = url.searchParams.get("id");
+    }
+
+    if (typeof id !== "string" || !id.trim()) {
+      return NextResponse.json(
+        { hata: "Ürün id'si gerekli" },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    const sql = sqlAl();
+    const silinenler = await sql`
+      DELETE FROM urunler
+       WHERE id = ${id.trim()}
+      RETURNING id, ad, reyon, fiyat
+    `;
+
+    if (!silinenler || silinenler.length === 0) {
+      return NextResponse.json(
+        { hata: `"${id}" numaralı ürün bulunamadı` },
+        { status: 404, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    const silinen = silinenler[0];
+    console.log(
+      `[DENETİM] Ürün silindi: id=${silinen.id} ("${silinen.ad}"), kullanıcı="${oturum.kullanici_adi}"`
+    );
+
+    return NextResponse.json(
+      {
+        silindi: true,
+        id: silinen.id,
+        ad: silinen.ad,
+      },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (e) {
+    console.error("yonetici/urun DELETE başarısız:", (e as Error).message);
+    return NextResponse.json(
+      { hata: "Ürün silinemedi" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+}
+
