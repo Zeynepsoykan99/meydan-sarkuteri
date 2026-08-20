@@ -245,7 +245,12 @@
     border-color: var(--color-kirmizi);
     color: var(--color-beyaz);
   }
-  .reyon[aria-pressed="true"] .reyon-adet { color: rgb(255 255 255 / 0.75); }
+  /* Seçili çipteki sayı TAM beyaz. beyaz/0.75 idi ve kırmızı zeminde
+     3.39:1 veriyordu — AA altı. Bu kırmızıda (#d6202a) tam beyaz bile
+     5.12:1'de kalıyor, yani %95'in altındaki her saydamlık eşiği deler:
+     vurguyu saydamlıkla azaltmak bu zeminde mümkün değil. Hiyerarşiyi
+     saydamlık yerine punto/ağırlık taşıyor. */
+  .reyon[aria-pressed="true"] .reyon-adet { color: var(--color-beyaz); }
   .reyon-adet { color: var(--color-murekkep-soluk); font-variant-numeric: tabular-nums; }
 
   /* Arama kutusu */

@@ -101,12 +101,99 @@ bolum("2 — Ham HTML (JS çalıştırmadan)");
 }
 
 /* ═══════ 3. Tarayıcı: dükkân bölümü, ölçüler, kontrast ═══════ */
+/* Kontrast — SAYFANIN TAMAMI taranıyor.
+
+   Eskiden burada tek bir örnek vardı: `.kart h3`'ün rengi, arka planı da
+   "rgb(255,255,255)" diye SABİT varsayılarak ölçülüyordu. İki ayrı şekil
+   hatası: (1) tek bir metin/zemin çifti bütün sayfanın yerine geçiyordu,
+   (2) gerçek zemin okunmuyordu. Koyu zemindeki soluk metin, sarı rozet
+   üstündeki yazı, altbilginin beyaz/60 metni — hiçbiri denetlenmiyordu ve
+   sınama yine de yeşil yanıyordu. Dokunma hedeflerindeki hatanın aynısı.
+
+   Şimdi: görünür metin taşıyan her öğe geziliyor, zemin ata zincirinde
+   saydam olmayan ilk renge kadar çıkılarak BULUNUYOR, WCAG AA eşiği metin
+   boyuna göre uygulanıyor (büyük metin 3.0, normal 4.5).
+
+   Ölçülemeyen durumlar sessizce geçilmiyor, ayrıca sayılıyor: zemini
+   görsel ya da gradyan olan metnin kontrastı bu yöntemle hesaplanamaz. */
 const KONTRAST = `(() => {
-  const lum = (r) => { const [a,b,c] = r.match(/\\d+(\\.\\d+)?/g).slice(0,3).map(Number);
+  /* Renkleri CANVAS ile gerçek piksele çeviriyoruz, metinden ayrıştırarak
+     değil. Sebebi somut: Tailwind 4 saydamlıklı renkleri
+     "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)" gibi üretiyor.
+     Sayıları regex'le çekip RGB sanan bir ayrıştırıcı bunu siyaha yakın
+     okuyor ve beyaz metni koyu zeminde 1.2:1 diye RAPORLUYOR — sahte
+     kırmızı. Canvas hem oklab/color-mix gibi her renk fonksiyonunu
+     çözüyor hem de alfayı zeminin üstüne DOĞRU şekilde bindiriyor. */
+  const tuval = document.createElement('canvas');
+  tuval.width = tuval.height = 1;
+  const ctx = tuval.getContext('2d', { willReadFrequently: true });
+
+  /* ust rengini alt renginin üzerine bindirip sonucu RGB olarak verir. */
+  const pikselle = (ust, alt) => {
+    ctx.clearRect(0, 0, 1, 1);
+    if (alt) { ctx.fillStyle = alt; ctx.fillRect(0, 0, 1, 1); }
+    ctx.fillStyle = ust;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return [r, g, b];
+  };
+
+  const lum = (renk) => { const [a,b,c] = Array.isArray(renk) ? renk : pikselle(renk, 'rgb(255,255,255)');
     const f = (v) => { v/=255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
     return 0.2126*f(a) + 0.7152*f(b) + 0.0722*f(c); };
-  window.__k = (on, arka) => { const a = lum(on), b = lum(arka);
+  const oran = (on, arka) => { const a = lum(on), b = lum(arka);
     return Math.round(((Math.max(a,b)+0.05)/(Math.min(a,b)+0.05))*100)/100; };
+  window.__k = oran;
+
+  /* Saydamlık ölçümü de canvas ile: renk beyaz ve siyah zemine ayrı ayrı
+     bindirildiğinde sonuç değişiyorsa altındaki zemin sızıyor demektir. */
+  const saydam = (renk) => {
+    if (!renk || renk === 'transparent') return true;
+    const beyazda = pikselle(renk, 'rgb(255,255,255)');
+    const siyahta = pikselle(renk, 'rgb(0,0,0)');
+    return beyazda.some((v, i) => Math.abs(v - siyahta[i]) > 1);
+  };
+
+  /* Metnin gerçekten oturduğu zemin: ata zincirinde saydam olmayan ilk
+     arka plan. Yolda görsel/gradyan varsa ölçülemez diyoruz. */
+  const zemin = (e) => {
+    for (let n = e; n && n !== document.documentElement.parentNode; n = n.parentElement) {
+      const s = getComputedStyle(n);
+      if (s.backgroundImage && s.backgroundImage !== 'none') return { olcusuz: true };
+      if (!saydam(s.backgroundColor)) return { renk: s.backgroundColor };
+    }
+    return { renk: 'rgb(255, 255, 255)' };
+  };
+
+  window.__kontrastTara = () => {
+    const kotu = [];
+    let olculen = 0, olcusuz = 0;
+    for (const e of document.querySelectorAll('body *')) {
+      // yalnızca DOĞRUDAN metin taşıyan öğeler; kaplar iki kez sayılmasın
+      const metin = [...e.childNodes]
+        .filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
+      if (!metin) continue;
+      const b = e.getBoundingClientRect();
+      if (b.width === 0 || b.height === 0) continue;
+      const s = getComputedStyle(e);
+      if (s.visibility === 'hidden' || s.display === 'none' || s.opacity === '0') continue;
+
+      const z = zemin(e);
+      if (z.olcusuz) { olcusuz++; continue; }
+      olculen++;
+
+      const px = parseFloat(s.fontSize);
+      const kalin = parseInt(s.fontWeight, 10) >= 700;
+      const buyuk = px >= 24 || (kalin && px >= 18.66);
+      const esik = buyuk ? 3 : 4.5;
+      // metin rengi zeminin ÜSTÜNE bindirilerek çözülüyor (alfa dahil)
+      const o = oran(pikselle(s.color, z.renk), pikselle(z.renk, 'rgb(255,255,255)'));
+      if (o < esik) {
+        kotu.push(metin.slice(0, 22) + ' → ' + o + ':1 (eşik ' + esik + ', ' + Math.round(px) + 'px)');
+      }
+    }
+    return { kotu, olculen, olcusuz };
+  };
 })()`;
 
 const t = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -158,8 +245,7 @@ try {
         wa: document.querySelectorAll('a[href*="wa.me"]').length,
         durum: document.querySelector("#dukkan-serit strong")?.textContent ?? null,
         kucuk,
-        adKontrast: (() => { const e = document.querySelector(".kart h3");
-          return e ? window.__k(getComputedStyle(e).color, "rgb(255,255,255)") : null; })(),
+        kontrast: window.__kontrastTara(),
       };
     });
 
@@ -170,7 +256,10 @@ try {
     r.wa === 0 ? ok("WhatsApp boş, düğme yok") : no(`${r.wa} WhatsApp`);
     r.durum ? ok(`durum göstergesi: ${r.durum}`) : no("durum yok");
     r.kucuk.length === 0 ? ok("dokunma hedefleri ≥44px") : no(`küçük: ${r.kucuk.join(" | ")}`);
-    (r.adKontrast ?? 0) >= 4.5 ? ok(`ürün adı kontrastı AA (${r.adKontrast}:1)`) : no(`${r.adKontrast}`);
+    r.kontrast.kotu.length === 0
+      ? ok(`kontrast AA: ${r.kontrast.olculen} metin öğesi ölçüldü, hepsi geçti` +
+           (r.kontrast.olcusuz ? ` (${r.kontrast.olcusuz} tanesi görsel/gradyan zeminde, ölçülemedi)` : ""))
+      : no(`AA altı ${r.kontrast.kotu.length}: ${r.kontrast.kotu.slice(0, 6).join(" | ")}`);
     hata.length === 0 ? ok("JS hatası yok") : no(`${hata.length}: ${hata.join(" | ")}`);
     await c.close();
   }
