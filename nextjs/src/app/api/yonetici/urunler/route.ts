@@ -10,11 +10,13 @@ import type { Reyon } from "@/lib/tipler";
    ÖNCEDEN data/products.json'dan okunuyordu — ama o dosyaya hiçbir yerden
    YAZILMIYOR. Panel ürün ekleyip silerken damga yerinde sayıyor ve
    esnafa gerçekte olmayan bir tazelik bildiriyordu.
-   Artık gerçekten derlemede tazelenen dosyadan okunuyor:
-   src/katalog-anlik.json'u prebuild her derlemede yeniden yazıyor. */
+   Artık src/katalog-anlik.json'dan okunuyor. Değer, ürünlerin guncellendi
+   alanlarının EN BÜYÜĞÜ — yani "derleme ne zaman koştu" değil, "fiyatlar en
+   son ne zaman değişti". Esnafı ilgilendiren bilgi bu; ayrıca veriden
+   türediği için derlemeler arasında değişmiyor ve dosyayı kirletmiyor. */
 function yedekDamgasi(): string | null {
-  const a = anlik as { alindi?: string; guncellendi?: string | null };
-  return a.alindi ?? a.guncellendi ?? null;
+  const a = anlik as { guncellendi?: string | null };
+  return a.guncellendi ?? null;
 }
 
 export async function GET() {

@@ -75,7 +75,6 @@ export async function GET() {
       mevcut: Boolean(anlik.urunler?.length),
       urunSayisi: anlik.urunler?.length ?? 0,
       damga: anlik.guncellendi ?? null,
-      alindi: anlik.alindi ?? null,
     },
     dukkan: dukkanBilgisi,
     surum: "Next.js 16.2.12 (PPR)",

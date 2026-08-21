@@ -96,8 +96,16 @@ async function anlikYaz(sql) {
     sql`SELECT max(guncellendi) AS en_son FROM urunler`,
   ]);
   const sayi = (v) => (v === null || v === undefined ? null : Number(v));
+  /* "alindi" (derleme duvar saati) BİLEREK YOK. Her derlemede değişen tek
+     alan oydu ve dosyayı sürekli "kirli" gösteriyordu: hiçbir şey
+     değişmese bile git status bir fark bildiriyordu, gerçek veri
+     değişiklikleri de o gürültünün içinde kayboluyordu.
+
+     Damga olarak ürünlerin guncellendi alanlarının EN BÜYÜĞÜ kullanılıyor;
+     veriden türüyor, veri değişmedikçe değişmiyor. Ayrıca panelde
+     gösterilecek doğru bilgi de bu: ziyaretçiyi ilgilendiren "derleme ne
+     zaman koştu" değil, "fiyatlar en son ne zaman değişti". */
   const paket = {
-    alindi: new Date().toISOString(),
     guncellendi: damga[0]?.en_son ? new Date(damga[0].en_son).toISOString() : null,
     reyonlar,
     urunler: urunler.map((u) => ({
