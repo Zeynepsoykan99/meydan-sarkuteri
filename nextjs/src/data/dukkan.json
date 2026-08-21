@@ -1,0 +1,27 @@
+{
+  "_not": "Dükkânın sabit bilgileri. Veritabanında DEĞİL: yılda bir kez değişir, panelden düzenlenmiyor, ve dosyada durunca veritabanı düşse bile site bu bölümü göstermeye devam ediyor. Boş bırakılan alanlar sayfada hiç görünmez.",
+  "_uyari": "dolduruldu false iken bu bilgiler ziyaretçiye HİÇ gösterilmez. Gerçek bilgileri yazdıktan sonra true yap; veri-kontrol.js DOLDURULACAK kalıntısı kalmadığını denetler.",
+  "dolduruldu": true,
+  "ad": "Meydan Şarküteri",
+  "adres": {
+    "satir": "Dikbıyık Mah. Atatürk Bul. No: 16A",
+    "ilce": "Çarşamba",
+    "il": "Samsun",
+    "haritaUrl": "https://maps.app.goo.gl/1qS4ueGG1RkYU6Ux6"
+  },
+  "iletisim": {
+    "telefon": "0362 854 11 44",
+    "whatsapp": ""
+  },
+  "saatler": [
+    { "gunler": "Her gün", "acilis": "07:30", "kapanis": "22:00" }
+  ],
+  "siparis": {
+    "var": false,
+    "yontem": "",
+    "aciklama": "",
+    "teslimat": ""
+  },
+  "odeme": [],
+  "fotograf": null
+}

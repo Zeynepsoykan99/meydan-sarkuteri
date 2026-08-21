@@ -5,6 +5,10 @@
   "description": "Mahalle marketi için tek sayfalık ürün kataloğu",
   "type": "module",
   "scripts": {
+    "dev": "npm --prefix nextjs run dev",
+    "build": "npm --prefix nextjs run build",
+    "start": "npm --prefix nextjs start",
+    "lint": "npm --prefix nextjs run lint",
     "kontrol": "node scripts/veri-kontrol.js",
     "migrate": "node --env-file-if-exists=.env.local scripts/migrate.js",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.js",

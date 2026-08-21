@@ -1,0 +1,347 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Tema — css/style.css'teki :root bloğunun tamamı token olarak burada.
+
+   Tailwind v4 CSS-first yapılandırma kullanıyor; tailwind.config.js YOK.
+   @theme içindeki her değişken hem bir utility üretiyor (--color-kirmizi
+   → bg-kirmizi) hem de CSS değişkeni olarak kalıyor, böylece aşağıdaki
+   bileşen sınıfları da aynı kaynaktan besleniyor.
+
+   Varsayılan palet KAPALI: --color-*: initial. Projenin kendi paleti var;
+   bg-blue-500 yazmak hiçbir şey üretmiyor, yani kural kendiliğinden
+   uygulanıyor. (Kurulu Tailwind 4.3.3 ile ölçülerek doğrulandı.)
+   ===================================================================== */
+
+@theme {
+  --color-*: initial;
+
+  --color-kirmizi: #d6202a;
+  --color-kirmizi-koyu: #9e1119;
+  --color-kirmizi-sis: #fdecec;
+  --color-sari: #ffce00;
+  --color-sari-koyu: #e5b400;
+  --color-yesil: #157f41;
+  --color-yesil-koyu: #0f5f31;
+  --color-yesil-canli: #3fbf6a;
+  --color-yesil-metin: #14713c;
+  --color-yesil-sis: #e4f5e9;
+  --color-yesil-vurgu: #1c6b36; /* düzenleme modalındaki onay düğmesi vurgusu */
+  --color-beyaz: #ffffff;
+  --color-tezgah: #faf8f3; /* ürün görselinin oturduğu ılık zemin */
+  --color-murekkep: #1b1917;
+  --color-murekkep-soluk: #6b6560;
+  --color-vitrin-metin: #4a443e; /* sarı vitrin üzerinde gövde metni: murekkep-soluk orada yeterince okunmuyor */
+  --color-cizgi: #e9e4da;
+
+  /* Panel uyarıları. Sarı ailesi "dikkat et", mavi "bilgi" anlamında;
+     ziyaretçi arayüzünde kullanılmıyor, yalnızca /panel içinde. */
+  --color-sari-sis: #fff8e1;   /* uyarı kutusu zemini */
+  --color-sari-rozet: #fff3cd; /* rozet zemini */
+  --color-sari-metin: #7a5b00; /* sarı zemin üzerinde okunur metin */
+  --color-mavi-sis: #e7f0ff;
+  --color-mavi-metin: #234e8f;
+
+  /* next/font değişkenleri layout.tsx'te <html>'e bağlanıyor */
+  --font-display: var(--yazi-display), "Trebuchet MS", system-ui, sans-serif;
+  --font-govde: var(--yazi-govde), "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --radius-kucuk: 8px;
+  --radius-orta: 14px;
+  --radius-buyuk: 22px;
+
+  --shadow-tezgah: 0 1px 2px rgba(27, 25, 23, 0.05), 0 8px 24px -12px rgba(27, 25, 23, 0.18);
+  --shadow-kalk: 0 2px 4px rgba(27, 25, 23, 0.06), 0 18px 38px -16px rgba(214, 32, 42, 0.3);
+
+  --container-kucak: 1240px;
+  --spacing-baslik: 144px; /* yapışkan başlığın gerçek yüksekliği */
+}
+
+/* =====================================================================
+   Bileşen sınıfları
+
+   Buradakiler utility yığınıyla ifade edilemeyen ya da edilse okunmaz
+   hale gelen parçalar: tentenin çizgili deseni, fiyat etiketinin çentiği
+   ve iğne deliği, kartın hover davranışı. Geri kalan her şey bileşenlerde
+   utility ile yazılıyor.
+   ===================================================================== */
+
+@layer base {
+  html {
+    scroll-padding-top: var(--spacing-baslik);
+  }
+  body {
+    background: var(--color-beyaz);
+    color: var(--color-murekkep);
+    font-family: var(--font-govde);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Sayfa kucağı — içerik genişliği tek yerden */
+  .kucak {
+    width: min(100% - 40px, var(--container-kucak));
+    margin-inline: auto;
+  }
+
+  /* Bakkal tentesi: kırmızı-beyaz şerit. Gradient deseni utility ile
+     yazılamıyor. */
+  .tente {
+    height: 10px;
+    background: repeating-linear-gradient(
+      115deg,
+      var(--color-kirmizi) 0 22px,
+      var(--color-beyaz) 22px 44px
+    );
+    border-bottom: 1px solid var(--color-cizgi);
+  }
+
+  /* Fiyat etiketi: sol kenarı çentikli sarı etiket + iğne deliği.
+     clip-path ve ::before utility ile ifade edilemez. */
+  .etiket {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+    padding: 7px 15px 7px 22px;
+    background: var(--color-sari);
+    color: var(--color-murekkep);
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    clip-path: polygon(11px 0, 100% 0, 100% 100%, 11px 100%, 0 50%);
+    border-radius: 0 var(--radius-kucuk) var(--radius-kucuk) 0;
+  }
+  .etiket::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-kirmizi);
+  }
+  .etiket .lira { font-size: 0.62em; font-weight: 600; margin-right: 1px; }
+  .etiket .kurus { font-size: 0.62em; }
+  .etiket-s { font-size: 21px; }
+  .etiket-l { font-size: 36px; padding: 9px 19px 9px 28px; }
+  .etiket-l::before { left: 15px; width: 6px; height: 6px; }
+
+  .eski-fiyat {
+    color: var(--color-murekkep-soluk);
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: line-through;
+    text-decoration-color: var(--color-kirmizi);
+    text-decoration-thickness: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Ürün kartı: hover'da kenar + gölge + kalkma + görselin büyümesi
+     birlikte çalışıyor, tek utility yığını olarak okunmuyor. */
+  .izgara {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(226px, 1fr));
+    gap: 18px;
+  }
+  .kart {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-beyaz);
+    border: 1.5px solid var(--color-cizgi);
+    border-radius: var(--radius-buyuk);
+    padding: 12px 14px 14px;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+  }
+  .kart:hover {
+    border-color: var(--color-murekkep);
+    box-shadow: var(--shadow-kalk);
+    transform: translateY(-3px);
+  }
+  .kart-gorsel-alan {
+    position: relative;
+    background: var(--color-tezgah);
+    border-radius: var(--radius-orta);
+    overflow: hidden;
+  }
+  /* Görsel CDN'den gelmezse kart boş bir çerçeve gibi durmasın.
+     Görseller A101 ve Migros CDN'lerinden hotlink; o taraf bir gün
+     engellerse 470 kart birden kırık ikona döner. */
+  .kart-gorsel-alan.gorsel-yok::after,
+  .detay-gorsel-alan.gorsel-yok::after {
+    content: "🏷️";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0.3;
+  }
+  .kart-gorsel-alan.gorsel-yok::after { font-size: 28px; }
+  .detay-gorsel-alan.gorsel-yok::after { font-size: 42px; }
+
+  .kart-gorsel {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+    transition: scale 0.3s ease;
+  }
+  .kart:hover .kart-gorsel { scale: 1.05; }
+  .kart-yok .kart-gorsel { opacity: 0.45; filter: grayscale(1); }
+
+  /* Düğmeler */
+  .dugme {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border: 1.5px solid transparent;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15.5px;
+    text-decoration: none;
+    transition: background 0.16s, color 0.16s, border-color 0.16s, transform 0.12s;
+  }
+  .dugme-dolu { background: var(--color-kirmizi); color: var(--color-beyaz); }
+  .dugme-dolu:hover { background: var(--color-kirmizi-koyu); }
+  .dugme-hat {
+    background: transparent;
+    color: var(--color-murekkep);
+    border-color: var(--color-murekkep);
+  }
+  .dugme-hat:hover { background: var(--color-murekkep); color: var(--color-sari); }
+
+  /* Reyon çipi */
+  .reyon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    /* min-height 44px: dokunma hedefi alt sınırı. padding tek başına
+       40px veriyordu — parmakla ıskalanan bir hedef. */
+    min-height: 44px;
+    padding: 8px 15px;
+    background: var(--color-beyaz);
+    border: 1.5px solid var(--color-cizgi);
+    border-radius: 999px;
+    font-size: 14.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: border-color 0.16s, background 0.16s, color 0.16s;
+  }
+  .reyon[aria-pressed="true"] {
+    background: var(--color-kirmizi);
+    border-color: var(--color-kirmizi);
+    color: var(--color-beyaz);
+  }
+  /* Seçili çipteki sayı TAM beyaz. beyaz/0.75 idi ve kırmızı zeminde
+     3.39:1 veriyordu — AA altı. Bu kırmızıda (#d6202a) tam beyaz bile
+     5.12:1'de kalıyor, yani %95'in altındaki her saydamlık eşiği deler:
+     vurguyu saydamlıkla azaltmak bu zeminde mümkün değil. Hiyerarşiyi
+     saydamlık yerine punto/ağırlık taşıyor. */
+  .reyon[aria-pressed="true"] .reyon-adet { color: var(--color-beyaz); }
+  .reyon-adet { color: var(--color-murekkep-soluk); font-variant-numeric: tabular-nums; }
+
+  /* Arama kutusu */
+  .arama input {
+    width: 100%;
+    padding: 12px 44px;
+    background: var(--color-tezgah);
+    border: 1.5px solid var(--color-cizgi);
+    border-radius: 999px;
+    transition: border-color 0.16s, background 0.16s;
+  }
+  .arama input::placeholder { color: var(--color-murekkep-soluk); }
+  .arama input:focus {
+    background: var(--color-beyaz);
+    border-color: var(--color-murekkep);
+    outline: none;
+  }
+  .arama input:focus-visible { outline: 3px solid var(--color-sari); outline-offset: 1px; }
+  .arama input::-webkit-search-cancel-button { display: none; }
+}
+
+/* =====================================================================
+   Animasyonlar
+   ===================================================================== */
+
+/* Kart giriş efekti: alttan kayarak ve opaklık artarak görünür.
+   Her kart bir öncekinden 30ms sonra başlıyor — kademeli giriş. */
+@keyframes kart-gir {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kart {
+  animation: kart-gir 0.35s ease both;
+}
+
+/* İlk 20 karta kademeli gecikme — sonrası sabit kalır, yoksa uzun
+   listelerde son kartlar saniyeler sonra görünür. */
+.izgara .kart:nth-child(1)  { animation-delay: 0ms; }
+.izgara .kart:nth-child(2)  { animation-delay: 30ms; }
+.izgara .kart:nth-child(3)  { animation-delay: 60ms; }
+.izgara .kart:nth-child(4)  { animation-delay: 90ms; }
+.izgara .kart:nth-child(5)  { animation-delay: 120ms; }
+.izgara .kart:nth-child(6)  { animation-delay: 150ms; }
+.izgara .kart:nth-child(7)  { animation-delay: 180ms; }
+.izgara .kart:nth-child(8)  { animation-delay: 210ms; }
+.izgara .kart:nth-child(9)  { animation-delay: 240ms; }
+.izgara .kart:nth-child(10) { animation-delay: 270ms; }
+.izgara .kart:nth-child(11) { animation-delay: 300ms; }
+.izgara .kart:nth-child(12) { animation-delay: 330ms; }
+.izgara .kart:nth-child(13) { animation-delay: 360ms; }
+.izgara .kart:nth-child(14) { animation-delay: 390ms; }
+.izgara .kart:nth-child(15) { animation-delay: 420ms; }
+.izgara .kart:nth-child(16) { animation-delay: 450ms; }
+.izgara .kart:nth-child(n+17) { animation-delay: 480ms; }
+
+/* Başa dön butonu giriş animasyonu */
+@keyframes basa-don-gir {
+  from { opacity: 0; transform: scale(0.8) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* İndirim rozeti vurgu: açılışta 2 kez nabız, hover'da tek tetikleme */
+@keyframes rozet-nabiz {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+.kart-rozet {
+  animation: rozet-nabiz 1.5s ease-in-out 2 forwards;
+}
+.kart:hover .kart-rozet {
+  animation: rozet-nabiz 0.8s ease-in-out 1;
+}
+
+/* =====================================================================
+   Erişilebilirlik: hareket duyarlılığı
+   ===================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .kart,
+  .kart-rozet {
+    animation: none !important;
+  }
+  .kart:hover {
+    transform: none;
+  }
+  .kart-gorsel {
+    transition: none;
+  }
+  .dugme,
+  .reyon {
+    transition: none;
+  }
+}

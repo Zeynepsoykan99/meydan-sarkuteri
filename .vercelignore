@@ -1,17 +1,24 @@
 # Deploy'a girmeyecek dosyalar.
 #
-# Bunlar olmadan da site ve api/ çalışıyor: şema ile script'ler yalnızca
-# yerel araçlar. Buraya yazılmasalar Vercel onları statik dosya sayıp
-# yayımlıyor — /db/schema.sql ve /scripts/*.js canlıda 200 dönüyordu.
-# Sır içermiyorlardı ama iç yapıyı gereksiz yere açıyorlardı ve
-# yonetici-ekle.js de aynı yoldan yayına çıkacaktı.
+# Next.js artık nextjs/ alt dizininden derleniyor. Kök dizindeki
+# vanilla site dosyaları (index.html, js/, css/ vb.) depoda kalır
+# ama Vercel artık onları sunmuyor.
 #
-# data/products.json BURAYA YAZILMAZ — API düşerse arayüz ona düşüyor.
+# data/dukkan.json BURAYA YAZILMAZ — prebuild betiği onu nextjs/data/
+# altına kopyalıyor.
 
 db/
 scripts/
 PROJE-RAPORU.md
+tests/
 
 # Gecici yonetici sifresi — asla yayina girmez
 .gecici-sifre.txt
-tests/
+
+# Vanilla site dosyaları — artık sunulmuyorlar
+index.html
+afis.html
+giris.html
+panel.html
+css/
+js/
