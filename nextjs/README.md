@@ -137,3 +137,64 @@ siliyor. Ayrıntı: `ILERLEME.md`.
 
 `npm run lint` **temiz değil**: 26 hata (19'u bu turdan önce de vardı).
 Çoğu `any` kullanımı ve efekt içinde `setState`. Derlemeyi engellemiyor.
+
+## Vercel dağıtımı — ölçülmüş davranışlar
+
+Proje: **meydan-sarkuteri-next**, Root Directory `nextjs`, Production
+Branch `nextjs`. Depo kökündeki vanilla site ayrı bir projede
+(`meydan-sarkuteri`, Production Branch `main`) kalmaya devam ediyor.
+
+### DATABASE_URL "Sensitive" işaretliyken dağıtıma ULAŞMIYOR
+
+**Ölçüm: 21 Ağustos 2026.** Değişken `Sensitive` olarak tanımlıyken üç
+ardışık derlemede de `db-isit` şunu bastı:
+
+    db-isit: DATABASE_URL yok, ısıtma atlandı
+
+Çalışma zamanında da yoktu: `/api/saglik` `"bagli": false` ve
+`"durum": "kısmi (yedekten besleniyor)"` dönüyordu. Site ayakta kalıyordu
+ama tamamen `src/katalog-anlik.json`'dan besleniyordu — panel ve yönetici
+uçları çalışmazdı.
+
+Elenenler:
+- **Betik değil.** `db-isit.mjs` `loadEnvConfig` + `process.env` kullanıyor.
+  `loadEnvConfig`'in var olan bir ortam değişkenini ezip ezmediği iki
+  senaryoda ölçüldü (.env dosyası olan ve olmayan dizin): ikisinde de
+  değişmedi.
+- **Tanım eksikliği değil.** `vercel env ls` değişkeni Production+Preview
+  kapsamında ve bütün dağıtımlardan önce oluşturulmuş gösteriyordu.
+
+Değişken **Sensitive olmadan** yeniden oluşturulunca aynı derleme:
+
+    db-isit: veritabanı hazır (932 ms, 1. deneme)
+    db-isit: src/katalog-anlik.json yazıldı (470 ürün)
+
+ve `/api/saglik` `"bagli": true`, gecikme ~330-390 ms.
+
+Not: Vercel dokümanı (`vercel.com/docs/cli/env`) Sensitive değerlerin
+"remain available to builds and at runtime" olduğunu söylüyor. Ölçtüğümüz
+davranış bununla çelişiyor. **DATABASE_URL'i Sensitive yapma.**
+
+### Derleme süreleri (Vercel, 2 çekirdek / 1 worker)
+
+| Ölçüm | Sayfa üretimi |
+| --- | --- |
+| Vercel | 13,3 – 18,4 sn |
+| Yerel (16 çekirdek, 15 worker) | 3,6 – 4,6 sn |
+
+Fark makineden; 40 sn'ye yaklaşan koşu görülmedi. Derleme veritabanına
+hiç gitmiyor (`NEXT_PHASE === "phase-production-build"` iken anlık
+görüntüden okunuyor), bu yüzden DB durumu derleme süresini etkilemiyor.
+
+### Koruma kapsamı — üretim takma adı AÇIK
+
+Hobby planında "All Deployments" koruması yok; Standard Protection
+geçerli. Ölçüm:
+
+    https://meydan-sarkuteri-next.vercel.app/        → 200  (korumasız)
+    https://meydan-sarkuteri-next-<hash>-....app/    → 302  (Vercel SSO)
+
+Yani dağıtım URL'leri korunuyor, **üretim takma adı korunmuyor**. Katalog
+o adreste herkese açık. Denetim betiği bu yüzden bypass ile çalıştırılıyor:
+
+    ADRES=https://... BYPASS=<secret> node tests/deploy-denetim.mjs
