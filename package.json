@@ -16,8 +16,7 @@
     "yedek-al": "node --env-file-if-exists=.env.local scripts/yedek-al.js"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "next": "16.2.12"
+    "@neondatabase/serverless": "^1.1.0"
   },
   "engines": {
     "node": ">=20 <25"
