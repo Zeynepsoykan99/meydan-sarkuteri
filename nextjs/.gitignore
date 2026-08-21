@@ -44,3 +44,6 @@ next-env.d.ts
 # lib/dukkan.ts onu modül olarak import ediyor; dosya yoksa derleme
 # kırılır (sessizce kaybolmaz). Tek doğruluk kaynağı hâlâ depo kökündeki
 # data/dukkan.json; buradaki kopyayı prebuild her derlemede tazeliyor.
+
+.vercel
+.env*
