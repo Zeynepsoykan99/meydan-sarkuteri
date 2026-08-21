@@ -21,6 +21,37 @@ const no = (m) => { console.log(`  ✗ ${m}`); k++; };
 const bolum = (t) => console.log(`\n${"═".repeat(62)}\n${t}\n${"═".repeat(62)}`);
 
 const OZGUN = readFileSync(VERI);
+const KOPYA = join(KOK, "src", "data", "dukkan.json");
+
+/* ═══════ 0. İki dukkan.json ayrışmış mı ═══════ */
+bolum("0 — data/dukkan.json: kök ile nextjs kopyası aynı mı");
+{
+  /* Tek doğruluk kaynağı depo kökündeki data/dukkan.json; nextjs/data/
+     altındaki onun prebuild tarafından tazelenen kopyası ve lib/dukkan.ts
+     onu MODÜL OLARAK import ediyor. İkisi ayrışırsa site, kökte düzeltilmiş
+     bir adresi/saati göstermeye devam etmez — eski kopyayı gösterir ve
+     kimse fark etmez. Kopyalama başarısız olursa (Vercel'de Root Directory
+     dışına erişim kapalıysa) tam olarak bu olur. */
+  let kopyaVar = true;
+  let kopyaIcerik = null;
+  try {
+    kopyaIcerik = readFileSync(KOPYA);
+  } catch {
+    kopyaVar = false;
+  }
+
+  kopyaVar
+    ? ok("nextjs/src/data/dukkan.json var (import edilebilir)")
+    : no("nextjs/src/data/dukkan.json YOK — lib/dukkan.ts import edemez, derleme kırılır");
+
+  if (kopyaVar) {
+    const a = JSON.stringify(JSON.parse(OZGUN.toString("utf8")));
+    const b = JSON.stringify(JSON.parse(kopyaIcerik.toString("utf8")));
+    a === b
+      ? ok("kök data/dukkan.json ile nextjs kopyası AYNI")
+      : no("İKİSİ AYRIŞMIŞ — prebuild kopyalaması çalışmamış, site eski veriyi gösteriyor");
+  }
+}
 
 /* ═══════ 1. Saat mantığı — saf, sunucu tarafı ═══════ */
 bolum("1 — Açık/kapalı hesabı (lib/dukkan.ts, Türkiye saati)");

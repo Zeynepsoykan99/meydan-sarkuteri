@@ -40,19 +40,33 @@ const { loadEnvConfig } = nextEnv;
 const DENEME = 5;
 const TOPLAM_SINIR_MS = 120_000;
 
-/* data/dukkan.json — depo kökünde duruyor. Vercel'de root nextjs/ olunca
-   üst dizine erişim güvenilmez; bu yüzden prebuild'de nextjs/data/ altına
-   kopyalıyoruz. İki sürüm aynı dosyayı paylaşmaya devam ediyor. */
+/* data/dukkan.json — depo kökünde duruyor, tek doğruluk kaynağı orası.
+   Kopyası nextjs/src/data/ altına alınıyor: lib/dukkan.ts onu MODÜL OLARAK
+   import ediyor (readFile değil), çünkü process.cwd() ile kurulan yolları
+   Next'in dosya izleyicisi izleyemiyor ve Vercel'de Root Directory dışına
+   erişim kısıtlı. src/ altında duruyor ki katalog-anlik.json ile aynı
+   desende olsun ve tsconfig kapsamına girsin. */
 function dukkanKopyala() {
   const kaynak = new URL("../../data/dukkan.json", import.meta.url);
-  const hedefDir = new URL("../data/", import.meta.url);
-  const hedef = new URL("../data/dukkan.json", import.meta.url);
+  const hedefDir = new URL("../src/data/", import.meta.url);
+  const hedef = new URL("../src/data/dukkan.json", import.meta.url);
   try {
     if (!existsSync(hedefDir)) mkdirSync(hedefDir, { recursive: true });
     copyFileSync(kaynak, hedef);
-    console.log("db-isit: data/dukkan.json → nextjs/data/dukkan.json kopyalandı");
+    console.log("db-isit: data/dukkan.json -> nextjs/src/data/dukkan.json kopyalandi");
   } catch (e) {
-    console.log(`db-isit: dukkan.json kopyalanamadı (${e.message}) — sorun değil, eski yol denenecek`);
+    /* ARTIK YUTULMUYOR. Eskiden "sorun değil, eski yol denenecek" deyip
+       geçiyordu — ama artık eski yol yok: lib/dukkan.ts dosyayı modül
+       olarak import ediyor. Kopyalama başarısız olursa depodaki kopya
+       eskimiş demektir ve kimse fark etmez. Yüksek sesle söylüyoruz. */
+    console.error("");
+    console.error("  ⚠ db-isit: data/dukkan.json KOPYALANAMADI");
+    console.error(`    sebep: ${e.message}`);
+    console.error("    nextjs/src/data/dukkan.json depodaki (muhtemelen eski) halinde kaliyor.");
+    console.error("    Vercel'de bu, Root Directory disina erisimin kapali oldugu anlamina gelir:");
+    console.error("    Settings -> Build and Deployment -> 'Include source files outside of");
+    console.error("    the Root Directory in the Build Step' kutucugunu isaretle.");
+    console.error("");
   }
 }
 

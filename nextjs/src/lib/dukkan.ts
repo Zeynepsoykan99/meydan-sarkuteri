@@ -1,36 +1,45 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { cacheLife } from "next/cache";
+import dukkanVerisi from "../data/dukkan.json";
 import type { Dukkan } from "./tipler";
 
-/* Dükkân bilgisinin dosyadan okunması. Saat mantığı lib/saat.ts'te —
-   orada next/* bağımlılığı yok, sınamalar doğrudan import edebiliyor. */
+/* Dükkân bilgisi. Saat mantığı lib/saat.ts'te — orada next/* bağımlılığı
+   yok, sınamalar doğrudan import edebiliyor. */
 
 export * from "./saat";
 
-/** data/dukkan.json — Vercel'de kök nextjs/ olduğunda dosya nextjs/data/
- *  altında duruyor (prebuild kopyalıyor). Yerelde iki yolu da deniyor. */
+/* NEDEN readFile DEĞİL import:
+
+   Önceden dosya `readFile(join(process.cwd(), ...))` ile okunuyordu ve iki
+   yol deneniyordu (nextjs/data/, sonra ../data/). Bu desenin iki ayrı
+   kırılma noktası vardı ve ikisi de SESSİZ:
+
+   1. Derleme zamanı — Vercel'de Root Directory nextjs olduğunda üst dizine
+      erişim kısıtlanıyor ("the application cannot access files outside of
+      the specified directory"). Prebuild'in kökten kopyalaması başarısız
+      olursa iki yol da tutmaz.
+   2. Çalışma zamanı — asıl sinsi olan. process.cwd() ile kurulan yolları
+      Next'in dosya izleyicisi (NFT) statik olarak İZLEYEMEZ. Prerender
+      derlemede çalıştığı için ilk istek sorunsuz gelir; ama cacheLife
+      ("minutes") dolup yenileme serverless fonksiyonun içinde koştuğunda
+      dosya o pakete kopyalanmamış olabilir.
+
+   Her iki durumda da dukkanGetir() null döner ve dükkân bölümü, üstteki
+   şerit ve altbilgi bilgisi HATA VERMEDEN kaybolur.
+
+   Modül olarak import edilince ikisi de ortadan kalkıyor: JSON derleme
+   zamanında paketin içine giriyor, ne üst dizin erişimi ne NFT izlemesi
+   gerekiyor, çalışma zamanında da garanti mevcut. katalog-anlik.json ve
+   urun-kimlikleri.json zaten bu desenle okunuyor.
+
+   Tek doğruluk kaynağı hâlâ depo kökündeki data/dukkan.json; buradaki
+   nextjs/data/dukkan.json onun prebuild tarafından tazelenen kopyası.
+   İkisinin ayrışmasını tests/dukkan.mjs denetliyor. */
 export async function dukkanGetir(): Promise<Dukkan | null> {
   "use cache";
   cacheLife("minutes");
 
-  /* Önce nextjs/data/ — Vercel production'da bu çalışır.
-     Yoksa eski ../data/ yolu — yerel geliştirme ve mevcut yapı. */
-  const yollar = [
-    join(process.cwd(), "data", "dukkan.json"),
-    join(process.cwd(), "..", "data", "dukkan.json"),
-  ];
-
-  for (const yol of yollar) {
-    try {
-      const veri = JSON.parse(await readFile(yol, "utf8")) as Dukkan;
-      if (!veri || typeof veri !== "object") continue;
-      if (veri.dolduruldu !== true) return null;   // bayrak kapalı: hiç gösterme
-      return veri;
-    } catch {
-      continue;   // bu yol yoksa sonraki dene
-    }
-  }
-  return null;   // hiçbir yolda bulunamadı: bölüm çıkmaz
+  const veri = dukkanVerisi as Dukkan;
+  if (!veri || typeof veri !== "object") return null;
+  if (veri.dolduruldu !== true) return null;   // bayrak kapalı: hiç gösterme
+  return veri;
 }
-

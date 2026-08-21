@@ -40,6 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prebuild üretimi: depo kökündeki data/dukkan.json'un kopyası.
-# Kaynak tek yerde kalsın diye depoya girmiyor (bkz. scripts/db-isit.mjs).
-/data/
+# nextjs/src/data/dukkan.json DEPOYA GİRER — gitignore'da DEĞİL.
+# lib/dukkan.ts onu modül olarak import ediyor; dosya yoksa derleme
+# kırılır (sessizce kaybolmaz). Tek doğruluk kaynağı hâlâ depo kökündeki
+# data/dukkan.json; buradaki kopyayı prebuild her derlemede tazeliyor.

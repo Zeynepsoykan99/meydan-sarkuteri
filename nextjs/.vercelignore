@@ -1,0 +1,39 @@
+# =====================================================================
+# Root Directory'si nextjs olan Vercel projesi için.
+#
+# NEDEN BURADA: Vercel .vercelignore'u "the root directory of your
+# project" içinde arıyor ve Root Directory ayarlandığında proje kökü
+# artık bu dizin. Depo kökündeki .vercelignore vanilla site projesi
+# içindir; ona dokunulmadı.
+#
+# Yollar bu dosyanın bulunduğu dizine göreli, .gitignore sözdizimi.
+#
+# DİKKAT — DOĞRULANMASI GEREKEN NOKTA:
+# "Include source files outside of the Root Directory" açıkken yüklemeye
+# depo kökündeki dosyalar da giriyor (db/, scripts/, .gecici-sifre.txt).
+# Bu dosyanın onları da kapsayıp kapsamadığı Vercel dokümanında AÇIKÇA
+# YAZMIYOR — iki .vercelignore'un birlikte nasıl davrandığı belgesiz.
+# Bu yüzden ilk başarılı deploy'dan sonra tests/deploy-denetim.mjs
+# çalıştırılmalı: /db/schema.sql, /scripts/yonetici-ekle.js ve
+# /.gecici-sifre.txt üçünün de 404 döndüğü ÖLÇÜLEREK doğrulanıyor.
+#
+# Not: Next.js projesinde yalnızca public/ ve .next çıktısı sunulur;
+# derleme ortamına yüklenen bir dosya kendiliğinden erişilebilir olmaz.
+# Yine de sırrın derleme makinesine düşmemesi gerekir.
+# =====================================================================
+
+# Tarayıcı sınamaları — yayına girmesinin hiçbir gerekçesi yok
+tests/
+
+# Ajan yönergeleri, geliştirici belgeleri
+AGENTS.md
+CLAUDE.md
+README.md
+
+# Derleme artığı
+tsconfig.tsbuildinfo
+
+# scripts/ BURAYA YAZILMAZ: db-isit.mjs prebuild olarak çalışıyor,
+# ürün kimliklerini ve katalog anlık görüntüsünü o üretiyor.
+# src/data/ ve src/katalog-anlik.json da YAZILMAZ: lib/ onları
+# modül olarak import ediyor, olmazlarsa derleme kırılır.
