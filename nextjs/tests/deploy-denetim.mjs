@@ -16,6 +16,10 @@
 
 const B = (process.env.ADRES || "").replace(/\/$/, "");
 const BYPASS = process.env.BYPASS || "";
+/* Denetlenen adres hangi rolde çalışıyor? robots.txt beklentisi buna göre
+   değişiyor: canlıda katalog indekslenmeli, preview'da HER ŞEY kapalı
+   olmalı. Varsayılan "preview" — lib/ortam.ts ile aynı fail-safe. */
+const ROL = process.env.ROL === "canli" ? "canli" : "preview";
 
 if (!B) {
   console.error("ADRES verilmedi. Örnek:");
@@ -125,10 +129,24 @@ bolum("5 — robots.txt ve sitemap.xml");
   const r = await iste("/robots.txt");
   r.status === 200 ? ok("/robots.txt → 200") : no(`/robots.txt → ${r.status}`);
   const rm = await r.text();
-  for (const yol of ["/panel", "/giris", "/afis", "/api/"]) {
-    rm.includes(`Disallow: ${yol}`)
-      ? ok(`robots.txt "${yol}" engelliyor`)
-      : no(`robots.txt "${yol}" ENGELLEMİYOR`);
+
+  if (ROL === "preview") {
+    /* Preview projesinin üretim takma adı Hobby planında korunmuyor.
+       Kataloğun ikinci kopyası internete açık olduğu için arama motoruna
+       HİÇBİR ŞEY bildirilmemeli — yoksa canlı siteyle yinelenen içerik. */
+    /Disallow:\s*\/\s*$/m.test(rm)
+      ? ok('robots.txt "Disallow: /" — her şey kapalı')
+      : no(`robots.txt her şeyi kapatmıyor — gelen: ${JSON.stringify(rm.trim())}`);
+    /Sitemap:/i.test(rm)
+      ? no("preview'da robots.txt sitemap bildiriyor — kapalı kopyanın haritası verilmemeli")
+      : ok("robots.txt sitemap bildirmiyor");
+  } else {
+    for (const yol of ["/panel", "/giris", "/afis", "/api/"]) {
+      rm.includes(`Disallow: ${yol}`)
+        ? ok(`robots.txt "${yol}" engelliyor`)
+        : no(`robots.txt "${yol}" ENGELLEMİYOR`);
+    }
+    /Sitemap:/i.test(rm) ? ok("robots.txt sitemap bildiriyor") : no("robots.txt sitemap bildirmiyor");
   }
 
   const s = await iste("/sitemap.xml");
@@ -139,6 +157,13 @@ bolum("5 — robots.txt ve sitemap.xml");
   /panel|giris|afis/.test(sm)
     ? no("sitemap'te /panel, /giris ya da /afis var — robots ile çelişiyor")
     : ok("sitemap'te panel/giris/afis yok");
+
+  /* Sitemap tabanı denetlenen adresle uyuşuyor mu? Sabit taban yüzünden
+     preview'ın sitemap'i canlı sitenin adreslerini bildiriyordu. */
+  const ilkLoc = (sm.match(/<loc>([^<]*)<\/loc>/) || [])[1] ?? "";
+  ilkLoc.startsWith(B)
+    ? ok(`sitemap tabanı denetlenen adresle aynı (${ilkLoc})`)
+    : no(`sitemap tabanı "${ilkLoc}" ama denetlenen "${B}" — SITE_TABANI yanlış`);
 }
 
 /* ═══════ 6. Güvenlik başlıkları ═══════ */
