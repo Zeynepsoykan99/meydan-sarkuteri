@@ -1,4 +1,5 @@
 import Link from "next/link";
+import KartNobeti from "./KartNobeti";
 import type { KartVerisi } from "@/lib/tipler";
 import { etiketParcalari, indirimYuzde } from "@/lib/bicim";
 
@@ -64,6 +65,10 @@ export default function UrunKarti({
         <Link href={`/urun/${u.id}`} prefetch={false} className="text-inherit no-underline
                                                 after:absolute after:inset-0 after:content-['']">
           {u.ad}
+          {/* Tıklandıktan sonra gezinme bitene kadar kartı işaretler.
+              Link'in ALTINDA olmak zorunda: useLinkStatus yalnızca
+              <Link> soyundan bir bileşende çalışıyor. */}
+          <KartNobeti />
         </Link>
       </h3>
 

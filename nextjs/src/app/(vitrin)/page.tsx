@@ -231,7 +231,11 @@ function KatalogIskeleti() {
         <div className="h-10 w-56 animate-pulse rounded-orta bg-cizgi" />
         <div className="izgara mt-6">
           {Array.from({ length: 30 }, (_, i) => (
-            <div key={i} className="h-[300px] animate-pulse rounded-buyuk bg-tezgah" />
+            /* bg-cizgi, bg-tezgah DEĞİL: tezgah (#faf8f3) katalog zemininden
+               ayırt edilemiyordu — ölçüldü, iskelet "yükleniyor" sinyali
+               olmaktan çıkıp boş alan gibi duruyordu. Üstteki başlık çubuğu
+               zaten cizgi (#e9e4da) kullanıyor ve gözle seçiliyor. */
+            <div key={i} className="h-[300px] animate-pulse rounded-buyuk bg-cizgi" />
           ))}
         </div>
       </div>
