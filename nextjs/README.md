@@ -98,6 +98,38 @@ tests/
   15 dk pencerede 5 deneme hız sınırı. Sahte hash ile zamanlama saldırısı önlenir.
 - **Çerez `secure` koşullu**: `NODE_ENV === "production"` → yerelde `http://`
   üzerinden geliştirme yapılabilsin. Risk belgelenmiş (bkz. `api/giris/route.ts`).
+- **Ana sayfa sayfalaması** (`lib/sayfalama.ts`): sunucu 30 ürün çiziyor,
+  kaydırdıkça 30'ar ekleniyor, 150'de duruyor, sonrası düğmeyle. Ham HTML
+  634 KB'dan 232 KB'a indi.
+
+  **JavaScript açıkken ve kapalıyken düğme farklı davranıyor — bilinçli:**
+
+  | | JavaScript AÇIK | JavaScript KAPALI |
+  |---|---|---|
+  | İlk görünüm | 30 ürün, kaydırınca otomatik 150'ye kadar | 30 ürün, otomatik yükleme yok |
+  | "Daha fazla göster" | 150'ye ulaşınca çıkar; **aynı sayfada** listeyi 180'e uzatır, adres değişmez | **baştan görünür**; `?sayfa=2`'ye **gider**, sonraki 30 ürünü gösterir |
+  | Sayfa bağlantıları | gizli (otomatik yükleme yeterli) | `<nav aria-label="Sayfalar">` ile önceki/sonraki |
+
+  Düğme her iki durumda da **gerçek bir `<a href>`**; JS yalnızca tıklamayı
+  yakalayıp `preventDefault` ediyor (Ctrl/Cmd+tık hariç — yeni sekme çalışsın).
+  Yani JS kapalıyken katalog gezilebilir kalıyor ve arama motoru
+  `?sayfa=2 … ?sayfa=16` zincirini izleyebiliyor; `rel=prev/next` ve her
+  sayfaya kendi `canonical`'ı bunun için var.
+
+  JS açıkken düğmenin **sayfa değiştirmemesi**, ziyaretçinin kaydırma konumunu
+  ve o ana kadar açtığı 150 ürünü kaybetmemesi için. JS kapalıyken durum
+  tutulamadığı için tek seçenek gerçek gezinme.
+
+- **Geçersiz `?sayfa` proxy'de yakalanıyor**: `notFound()` Suspense içinden
+  başlıklar gönderildikten sonra çalıştığı için 200 + soft-404 veriyordu.
+  `proxy.ts` render öncesi doğruluyor — `/urun/[id]` ile aynı desen.
+
+- **Otomatik yükleme IntersectionObserver DEĞİL, konum denetimi**: IO yalnızca
+  kesişim *değişince* haber veriyor; sayfa sonuna tek hamlede atlandığında
+  (mobil ivmeli kaydırma) nöbetçi atlanıyor ve özellik sessizce ölüyordu.
+  Izgaranın altındaki kuyruk 390px'te 1477px, 1280px'te 969px olduğu için
+  kusur masaüstünde görünmüyordu. `tests/sayfalama.mjs` bölüm 7 kilitliyor.
+
 - **Panel mobil öncelikli**: esnafın telefonundan fiyat onayı ve düzenleme.
   10 kat sıçrama kontrolü, geri alma, uyarı sistemi.
 
