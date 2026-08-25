@@ -26,9 +26,21 @@ bolum("1 — Sayfaların Erişilebilirliği");
 
   const robotsRes = await fetch(B + "/robots.txt");
   const robotsText = await robotsRes.text();
-  robotsText.includes("Disallow: /giris") && robotsText.includes("Disallow: /panel") && robotsText.includes("Disallow: /afis")
-    ? ok("robots.txt /giris, /panel ve /afis için disallow içeriyor")
-    : no("robots.txt eksik");
+  /* robots.txt'nin gövdesi SITE_ROLU'na göre DEĞİŞİYOR (lib/ortam.ts).
+     Rol tanımsızsa fail-safe "preview" devrede ve site tümüyle kapalı.
+     Sınama her iki rolde de gerçek bir şey iddia ediyor: preview'da tam
+     kapanma + site haritası bildirilmemesi, canlıda özel yolların
+     kapatılması + site haritasının bildirilmesi. */
+  const preview = /Disallow:\s*\/\s*$/m.test(robotsText) && !/Allow:/.test(robotsText);
+  if (preview) {
+    !robotsText.toLowerCase().includes("sitemap")
+      ? ok("robots.txt: preview rolü — site tümüyle kapalı, harita bildirilmiyor")
+      : no("preview rolünde site haritası bildiriliyor");
+  } else {
+    robotsText.includes("Disallow: /giris") && robotsText.includes("Disallow: /panel") && robotsText.includes("Disallow: /afis")
+      ? ok("robots.txt: canlı rolü — /giris, /panel ve /afis kapalı")
+      : no("robots.txt eksik");
+  }
 }
 
 /* ═══════ 2. Korumalı API Uçları (Yetkisiz İstekler) ═══════ */

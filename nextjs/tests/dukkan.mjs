@@ -6,6 +6,7 @@
    ediliyor; DOM tarafı tarayıcıyla ölçülüyor. */
 
 import { chromium } from "playwright-core";
+import { SAYFA_BOYUTU } from "../src/lib/sayfalama.ts";
 import { fileURLToPath } from "node:url";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -118,8 +119,22 @@ bolum("2 — Ham HTML (JS çalıştırmadan)");
   const ham = await (await fetch(B + "/")).text();
   const kart = (ham.match(/<article class="kart/g) || []).length;
   const yol = new Set(ham.match(/\/urun\/u\d+/g) || []);
-  kart === 470 ? ok(`ham HTML'de ${kart} ürün kartı`) : no(`${kart} kart`);
-  yol.size === 470 ? ok(`${yol.size} benzersiz ürün adresi`) : no(`${yol.size} adres`);
+  /* Sayfalamadan SONRA ilk sayfa 30 kart çiziyor, 470 değil — kasıtlı.
+     Ama "470 ürün hâlâ erişilebilir" güvencesini kaybetmemek için burada
+     bırakmıyoruz: site haritası tam listeyi bildirmek zorunda, sayfalar
+     arası dilimlemeyi de tests/sayfalama.mjs denetliyor. */
+  kart === SAYFA_BOYUTU
+    ? ok(`ham HTML'de ${kart} ürün kartı (1. sayfa dilimi)`)
+    : no(`${kart} kart, beklenen ${SAYFA_BOYUTU}`);
+  yol.size >= SAYFA_BOYUTU && yol.size <= SAYFA_BOYUTU + 20
+    ? ok(`${yol.size} benzersiz ürün adresi (dilim + düşen etiketler şeridi)`)
+    : no(`${yol.size} adres`);
+
+  const harita = await (await fetch(B + "/sitemap.xml")).text();
+  const haritaUrun = new Set(harita.match(/\/urun\/u\d+/g) || []);
+  haritaUrun.size === 470
+    ? ok("site haritası 470 ürünün tamamını bildiriyor")
+    : no(`site haritasında ${haritaUrun.size} ürün`);
 
   const urun = await (await fetch(B + "/urun/u001")).text();
   const baslik = /<title>([^<]*)<\/title>/.exec(urun)?.[1] ?? "";
@@ -281,7 +296,10 @@ try {
     });
 
     !r.tasma ? ok(`yatay taşma yok (${r.w}/${r.cw})`) : no(`TAŞMA ${r.w}/${r.cw}`);
-    r.kart === 470 ? ok("470 kart") : no(`${r.kart} kart`);
+    /* Kaydırmadan önce yalnızca ilk dilim çizili — otomatik yükleme
+       tetiklenmemiş olmalı. Bu ölçüm aynı zamanda "nöbetçi ilk ekranda
+       değil" güvencesi: olsaydı kart sayısı 30'u aşardı. */
+    r.kart === SAYFA_BOYUTU ? ok(`${SAYFA_BOYUTU} kart (ilk dilim)`) : no(`${r.kart} kart`);
     r.telHref === "tel:03628541144" ? ok("tel: doğru") : no(`${r.telHref}`);
     r.haritaRel === "noopener noreferrer" ? ok("harita rel doğru") : no(`${r.haritaRel}`);
     r.wa === 0 ? ok("WhatsApp boş, düğme yok") : no(`${r.wa} WhatsApp`);

@@ -1,7 +1,57 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { katalogGetir } from "@/lib/katalog";
 import { etiketParcalari, indirimYuzde, kartVerisi } from "@/lib/bicim";
+import { sayfaAdresi, sayfaCoz, toplamSayfa } from "@/lib/sayfalama";
+import { siteTabani } from "@/lib/ortam";
 import KatalogBolumu from "@/bilesenler/KatalogBolumu";
 import Link from "next/link";
+
+/* SAYFALAMA VE CACHE COMPONENTS
+
+   searchParams bir ÇALIŞMA ZAMANI API'si: Cache Components altında onu
+   okuyan bileşen <Suspense> içinde olmak zorunda, yoksa sayfa statik
+   önceden üretilemiyor (docs/01-app/01-getting-started/08-caching.md:134).
+
+   Bu yüzden katalog ayrı bir bileşene alındı ve Suspense'e sarıldı:
+   vitrin, günün etiketi ve düşen etiketler STATİK kabukta kalıyor,
+   yalnızca ürün ızgarası isteğe göre akıyor. Akış SSR olduğu için ham
+   HTML'de — JavaScript çalışmadan — o sayfanın 30 ürünü yine geliyor. */
+
+async function KatalogAlani({
+  aramaParam,
+}: {
+  aramaParam: Promise<{ [k: string]: string | string[] | undefined }>;
+}) {
+  const p = await aramaParam;
+  const sayfa = sayfaCoz(p.sayfa);
+  const { urunler, reyonlar } = await katalogGetir();
+  const toplam = toplamSayfa(urunler.length);
+
+  /* Olmayan sayfa → 404. Sebebi SEO: ?sayfa=99 boş bir liste ile 200
+     dönerse arama motoru sonsuz sayıda "ince içerik" adresi indeksler.
+     Bu rota generateStaticParams kullanmıyor, yani /urun/[id]'deki
+     "SSG + notFound() → 500" kusuru buraya uygulanmıyor. */
+  if (sayfa === null || sayfa > toplam) notFound();
+
+  const taban = siteTabani();
+
+  return (
+    <>
+      {/* Sayfalanmış dizi bağlantıları. React 19 bunları <head>'e
+          yükseltiyor; arama motoru sayfaları tek dizi olarak okuyor. */}
+      {sayfa > 1 && <link rel="prev" href={`${taban}${sayfaAdresi(sayfa - 1)}`} />}
+      {sayfa < toplam && <link rel="next" href={`${taban}${sayfaAdresi(sayfa + 1)}`} />}
+      <KatalogBolumu
+        urunler={urunler.map(kartVerisi)}
+        reyonlar={reyonlar}
+        sayfa={sayfa}
+        toplam={toplam}
+      />
+    </>
+  );
+}
 
 /* Sunucu Bileşeni. 470 ürün SUNUCUDA çiziliyor — geçişin asıl amacı bu.
    Bugünkü site kartları istemcide çiziyor, ham HTML'de tek ürün yok. */
@@ -44,7 +94,42 @@ function YedekNotu({ damga }: { damga: string | null }) {
   );
 }
 
-export default async function AnaSayfa() {
+/* Sayfa başına kanonik adres ve rel=next/prev.
+   Her sayfanın canonical'i KENDİSİNİ gösteriyor: ?sayfa=2'yi 1'e
+   kanonikleştirmek, oradaki 30 ürünü arama motoru için görünmez yapardı.
+   1. sayfanın kanoniği parametresiz "/" — iki adres aynı içeriği
+   göstermesin diye (bkz. sayfaCoz). */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const p = await searchParams;
+  const sayfa = sayfaCoz(p.sayfa) ?? 1;
+  const { urunler } = await katalogGetir();
+  const toplam = toplamSayfa(urunler.length);
+  const taban = siteTabani();
+
+  /* rel=next / rel=prev BURADA DEĞİL: Metadata API'sinin "other" alanı
+     <meta name="next"> üretiyor, oysa arama motorunun beklediği
+     <link rel="next">. Onlar KatalogAlani içinde doğrudan <link> olarak
+     çiziliyor — React 19 <link>'i <head>'e yükseltiyor. */
+  return {
+    alternates: { canonical: `${taban}${sayfaAdresi(sayfa)}` },
+    ...(sayfa > 1
+      ? {
+          title: `Bugünün etiketleri — sayfa ${sayfa} | Meydan Şarküteri`,
+          robots: { index: true, follow: true },
+        }
+      : {}),
+  };
+}
+
+export default async function AnaSayfa({
+  searchParams,
+}: {
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
+}) {
   const { urunler, reyonlar, guncellendi, yedekMi } = await katalogGetir();
 
   const indirimliler = urunler
@@ -122,9 +207,31 @@ export default async function AnaSayfa() {
       )}
 
       {/* İstemciye TAM ürün değil, hafif kart verisi gidiyor: kaynak,
-          miktar ve birim hiç serileşmiyor (birim fiyat sunucuda hesaplandı). */}
-      <KatalogBolumu urunler={urunler.map(kartVerisi)} reyonlar={reyonlar} />
+          miktar ve birim hiç serileşmiyor (birim fiyat sunucuda hesaplandı).
+          Süzme istemcide kaldığı için 470 ürünün hafif verisi tam geçiyor;
+          sayfalama yalnızca ÇİZİM'i sınırlıyor, veriyi değil. */}
+      <Suspense fallback={<KatalogIskeleti />}>
+        <KatalogAlani aramaParam={searchParams} />
+      </Suspense>
     </>
+  );
+}
+
+/* Akış beklenirken yer tutucu. Düzen kaymasın diye ızgarayla aynı
+   ölçüde 30 kutu; ekranda görünen ilk sıra kadarı yeter ama kaymayı
+   önlemek için tam dilim çiziliyor. */
+function KatalogIskeleti() {
+  return (
+    <section className="katalog scroll-mt-baslik py-11 md:py-16" id="katalog" aria-busy="true">
+      <div className="kucak">
+        <div className="h-10 w-56 animate-pulse rounded-orta bg-cizgi" />
+        <div className="izgara mt-6">
+          {Array.from({ length: 30 }, (_, i) => (
+            <div key={i} className="h-[300px] animate-pulse rounded-buyuk bg-tezgah" />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -45,10 +45,20 @@ bolum("2 — Robots.txt ve Sitemap.xml Doğrulaması");
     const res = await fetch(`${B}/robots.txt`);
     res.status === 200 ? ok("/robots.txt 200 OK") : no(`/robots.txt status: ${res.status}`);
     const txt = await res.text();
-    txt.includes("/panel") && txt.includes("/giris") && txt.includes("/afis")
-      ? ok("/panel, /giris, /afis disallow kuralları mevcut")
-      : no("robots.txt kuralları eksik");
-    txt.includes("sitemap.xml") ? ok("sitemap referansı mevcut") : no("sitemap referansı yok");
+    /* Gövde SITE_ROLU'na göre değişiyor — bkz. lib/ortam.ts. İki rolün
+       iki ayrı doğru davranışı var, ikisi de burada denetleniyor. */
+    const preview = /Disallow:\s*\/\s*$/m.test(txt) && !/Allow:/.test(txt);
+    if (preview) {
+      !txt.toLowerCase().includes("sitemap")
+        ? ok("preview rolü: site tümüyle kapalı, harita bildirilmiyor")
+        : no("preview rolünde site haritası bildiriliyor");
+      ok("preview rolü: özel yol kuralları gereksiz (her şey zaten kapalı)");
+    } else {
+      txt.includes("/panel") && txt.includes("/giris") && txt.includes("/afis")
+        ? ok("/panel, /giris, /afis disallow kuralları mevcut")
+        : no("robots.txt kuralları eksik");
+      txt.includes("sitemap.xml") ? ok("sitemap referansı mevcut") : no("sitemap referansı yok");
+    }
   } catch (e) {
     no(`robots.txt testi patladı: ${e.message}`);
   }
