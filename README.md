@@ -16,23 +16,32 @@ npm run build && npm start
 
 ## Yayın (Vercel)
 
-**Şu an canlıda olan hâlâ eski vanilla site.** Next.js sürümü `nextjs` dalında
-hazır ve yayına geçmeye elverişli; geçiş, o dal `main`'e birleştirildiğinde
-gerçekleşir. Doğrulama: canlıda `/api/katalog` 200, `/api/saglik` 404 ve
-`/urun/u001` 404 dönüyor — üçü de eski sitenin imzası.
+**Canlıda olan Next.js sürümüdür.** Geçiş, `nextjs` dalı `main`'e
+birleştirildiğinde yapıldı. Doğrulama: canlıda `/api/saglik` 200 ve
+`/urun/u001` 200 dönüyor, `/api/katalog` ise 404 — üçü de yeni sürümün
+imzası. (Eski vanilla sitede tam tersiydi.)
 
-Geçiş yapıldığında `vercel.json` `nextjs/` alt dizinini derletir
-(`buildCommand: cd nextjs && npm run build`). Eski vanilla dosyalar
-(`index.html`, `js/`, `css/`) arşiv olarak depoda kalır ama `.vercelignore`
-sayesinde artık yayımlanmaz; eski adresler (`/index.html`, `/giris.html`,
+Derlemeyi `vercel.json` değil, Vercel projesindeki **Root Directory = `nextjs`**
+ayarı yönetiyor; kökteki `vercel.json` kaldırıldı. Eski vanilla dosyalar
+(`index.html`, `js/`, `css/`) arşiv olarak depoda kalıyor ama `.vercelignore`
+sayesinde yayımlanmıyor; eski adresler (`/index.html`, `/giris.html`,
 `/panel.html`, `/afis.html`) Next tarafında kalıcı yönlendirmeyle (308)
-karşılanır.
+karşılanıyor — ölçüldü, dördü de sırasıyla `/`, `/giris`, `/panel`, `/afis`
+adresine gidiyor.
+
+İki Vercel projesi var: **meydan-sarkuteri** (canlı, Production Branch
+`main`) ve **meydan-sarkuteri-next** (preview, Production Branch `nextjs`).
+Hangi rolde çalıştığını `SITE_ROLU` değişkeni söylüyor; tanımsızsa site
+kendini `preview` sayıp arama motorlarına kapatıyor (bkz. `nextjs/src/lib/ortam.ts`).
 
 ## Veritabanı
 
 Katalog iki yerde durur: **veritabanı** kaynaktır, `data/products.json`
-ise son bilinen iyi kopyadır (yedek). Sayfa önce `/api/katalog`'u dener,
-olmazsa yedeğe düşer.
+ise son bilinen iyi kopyadır (yedek). Next.js sürümünde sayfa veritabanını
+**sunucuda** okur; okuma başarısız olursa derleme öncesi üretilen
+`nextjs/src/katalog-anlik.json` anlık görüntüsüne düşer ve vitrinde
+"yedek kopya" uyarısı gösterir (`nextjs/src/lib/katalog.ts`). Tarayıcıdan
+`/api/katalog` çağıran zincir arşivdeki vanilla siteye aitti.
 
 ### Kurulum
 
@@ -55,7 +64,9 @@ fark ettirmeden geri alabilirdi.
 
 ### Şema
 
-`db/schema.sql` üç tablo tanımlar: `reyonlar`, `urunler`, `fiyat_gecmisi`.
+`db/schema.sql` altı tablo tanımlar: `reyonlar`, `urunler`, `fiyat_gecmisi`,
+`yoneticiler`, `oturumlar`, `giris_denemeleri`. İlk üçü katalog, son üçü
+kimlik doğrulama tarafı.
 
 Ürün id'leri `u001` biçiminde korunuyor — mevcut bağlantılar
 (`?urun=u065`) ve fiyat geçmişi bunlara dayanıyor. Yeni id bir
@@ -72,9 +83,13 @@ verinin yazılmasını en baştan engeller.
 
 ### API
 
-`GET /api/katalog` — yanıt `data/products.json` ile birebir aynı
-şekildedir, böylece arayüz iki kaynağı ayırt etmek zorunda kalmaz.
-GET dışındaki metodlar 405 döner.
+`GET /api/katalog` **arşivdeki vanilla siteye aitti ve artık yayında yok**
+(canlıda 404). Next.js sürümü katalogu sunucuda okuyup HTML'e basıyor;
+tarayıcının katalog için ayrı bir uca gitmesi gerekmiyor. Dosya
+(`api/katalog.js`) depoda arşiv olarak duruyor.
+
+Yayındaki uçlar: `/api/saglik`, `/api/giris`, `/api/cikis`, `/api/oturum`,
+`/api/sifre-degistir` ve korumalı `/api/yonetici/*`.
 
 **Katalog uçları yalnızca okur.** Yazma tek bir yerden yapılır:
 `PATCH /api/yonetici/urun`, oturum zorunlu (aşağıda "Panel"). Herkese
@@ -119,8 +134,9 @@ imzalı jeton kullanılmadığı için ayrı bir imza sırrı yok.
 
 ## Panel
 
-`/giris.html` → giriş, `/panel.html` → panel. İkisi de `noindex`, arama
-motorlarına kapalı, `robots.txt` ile de engelli.
+`/giris` → giriş, `/panel` → panel. Eski `.html` adresleri 308 ile bunlara
+yönleniyor. İkisi de `noindex`, arama motorlarına kapalı, `robots.txt` ile
+de engelli.
 
 Panel market sahibinin günlük işi için: **fiyat güncellemek.** Dükkânda,
 telefonla, elde ürünle kullanılacağı varsayılarak yapıldı — her tasarım
@@ -259,8 +275,10 @@ npm run yedek-al
 ```
 
 Veritabanındaki güncel katalogu `data/products.json`'a yazar. Bu dosya
-**arayüzün yedeğidir**: `/api/katalog` düşerse `js/app.js` ona düşer ve
-site fiyatları göstermeye devam eder — o yüzden `.vercelignore`'a
+**yedek zincirinin kaynağıdır**: arşivdeki vanilla arayüz `/api/katalog`
+düşünce doğrudan bu dosyaya düşüyordu. Next.js sürümünde aynı veri
+`prebuild` sırasında `nextjs/src/katalog-anlik.json`'a dönüştürülüyor ve
+veritabanı okunamazsa oraya düşülüyor — o yüzden dosya `.vercelignore`'a
 yazılmaz, deploy'a girer.
 
 **Ne zaman çalıştırmalı:** sahibi panelden bir grup fiyatı güncelledikten
@@ -317,7 +335,6 @@ scripts/yonetici-ekle.js Yönetici hesabı açar / şifre günceller
 scripts/yedek-al.js      Veritabanını data/products.json'a yazar
 scripts/deneme-yedegi.js Geliştirme aracı: tabloyu kopyalar ve geri yükler
 og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
-vercel.json              Build kapalı; api/ fonksiyonları çalışır
 .vercelignore            db/, scripts/ ve şifre dosyası yayına girmez
 ```
 
@@ -372,8 +389,9 @@ vercel.json              Build kapalı; api/ fonksiyonları çalışır
   görselle ve listenin sonunda görünür.
 - **Ürün ayrıntısı** — karta tıklayınca açılır (native `<dialog>`: Esc ve odak
   tuzağı tarayıcıdan gelir). Büyük görsel, birim fiyat, önceki fiyat ve verinin
-  hangi katalogdan geldiği. Adres çubuğuna `?urun=u001` yazılır, bağlantı
-  paylaşılabilir, geri tuşu pencereyi kapatır.
+  hangi katalogdan geldiği. **Next.js sürümünde** her ürünün `/urun/u001`
+  biçiminde gerçek, sunucuda çizilen kendi sayfası var; arşivdeki vanilla
+  arayüzde bu bir `<dialog>`'du ve adres `?urun=u001` olarak yazılıyordu.
 - **Filtreler** — "Sadece indirimliler" düğmesi ve fiyat aralığı kutuları.
 - **Günün etiketi** — kataloğun en yüksek indirimli ürününden otomatik üretilir.
 - **Düşen etiketler** — indirimli ürünlerin yatay rayı. Katalogda hiç indirim
@@ -385,7 +403,10 @@ vercel.json              Build kapalı; api/ fonksiyonları çalışır
   tuşu önceki duruma döner. `file://` ile açıldığında tarayıcı buna izin vermez;
   her şey yine çalışır, yalnızca adres güncellenmez.
 - Mobil uyumlu, klavyeyle gezilebilir, `prefers-reduced-motion` desteklenir.
-- Ürünleri JavaScript basar; kapalıysa sayfa bunu söyleyen bir uyarı gösterir.
+- **Next.js sürümünde ürünleri sunucu basar**: JavaScript kapalıyken de
+  katalog görünür ve gezilebilir (sayfalama gerçek `?sayfa=N` bağlantılarıyla
+  çalışır, bkz. `nextjs/README.md`). Arşivdeki vanilla arayüzde ürünleri
+  JavaScript basıyordu ve kapalıysa yalnızca bir uyarı görünüyordu.
 
 ## Tasarım
 
@@ -427,7 +448,7 @@ Site bir katalogdur: ürünleri ve fiyatları gösterir, sipariş almaz.
 
 ```
 npm run kontrol                        data/products.json'u denetler
-node scripts/veri-kontrol.js --api     canlı /api/katalog yanıtını denetler
+node scripts/veri-kontrol.js --api     bir /api/katalog yanıtını denetler (canlıda bu uç YOK)
 node scripts/veri-kontrol.js --api=URL başka bir adresi denetler
 ```
 

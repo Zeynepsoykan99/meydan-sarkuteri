@@ -21,6 +21,11 @@ import { Pool } from '@neondatabase/serverless';
 
 const YOL = new URL('../.deneme-yedek.json', import.meta.url);
 const ALANLAR = ['fiyat', 'eski_fiyat', 'miktar', 'birim', 'stokta', 'kaynak', 'guncellendi'];
+/* Kimlik dışındaki BÜTÜN sütunlar. ALANLAR yalnızca "değeri değişebilen"
+   alanlar; satırın kendisini yeniden yaratmak için ad/reyon/gorsel de
+   gerekiyor. Ayrım duruyor çünkü UPDATE yolu ALANLAR'ı kullanıyor
+   (tetikleyici davranışı ona göre ayarlı), INSERT yolu tamamını. */
+const TUM_ALANLAR = ['ad', 'reyon', 'gorsel', ...ALANLAR];
 const BEKLENEN_ADET = 470;
 
 if (!process.env.DATABASE_URL) {
@@ -31,7 +36,7 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 pool.on('error', (e) => console.error('[pool]', e.message));
 
-const SEC = `SELECT id, ${ALANLAR.join(', ')} FROM urunler ORDER BY id`;
+const SEC = `SELECT id, ${TUM_ALANLAR.join(', ')} FROM urunler ORDER BY id`;
 
 /* Karşılaştırma için tek biçim. pg timestamptz'i Date, numeric'i metin
    döndürüyor; JSON'a yazılınca Date metne dönüyor. İkisi de aynı kalıba
@@ -73,7 +78,7 @@ function dogrula(paket, sessiz = false) {
     if (!u.id) { bosKimlik++; continue; }
     kimlikler.add(u.id);
     // Alanlar VAR MI — null olabilirler, ama anahtar bulunmalı
-    for (const a of ALANLAR) if (!(a in u)) eksikAlan++;
+    for (const a of TUM_ALANLAR) if (!(a in u)) eksikAlan++;
     if (u.fiyat === null || u.fiyat === undefined || Number(u.fiyat) <= 0) bosFiyat++;
   }
   if (bosKimlik) sorun.push(`${bosKimlik} üründe id yok`);
@@ -83,7 +88,7 @@ function dogrula(paket, sessiz = false) {
 
   yaz(`  ürün       : ${paket.urunler.length}`);
   yaz(`  benzersiz id: ${kimlikler.size}`);
-  yaz(`  alan/ürün  : ${ALANLAR.length} (${ALANLAR.join(', ')})`);
+  yaz(`  alan/ürün  : ${TUM_ALANLAR.length} (${TUM_ALANLAR.join(', ')})`);
   yaz(`  fiyatı olan: ${paket.urunler.length - bosFiyat}`);
   yaz(`  alındı     : ${paket.alindi}`);
 
@@ -135,7 +140,28 @@ async function geri(paket = oku()) {
        WHERE u.id = v.id AND u.guncellendi IS DISTINCT FROM v.g`,
       [idler, damgalar]);
 
-    // 3) Geri yükleme sırasında oluşan geçmiş kayıtları da dahil, hepsi silinir
+    /* 3) SATIR SAYISINI da geri getir. UPDATE'ler yalnızca var olan
+       satırları düzeltir; asama3 sınaması ürün EKLEYİP SİLDİĞİ için asıl
+       risk burada. Önce kopyada olmayan satırlar siliniyor (fiyat_gecmisi
+       ON DELETE CASCADE ile kendiliğinden temizleniyor), sonra kopyada
+       olup tabloda bulunmayanlar bütün sütunlarıyla geri konuyor. */
+    const { rowCount: fazla } = await istemci.query(
+      `DELETE FROM urunler WHERE id <> ALL($1::text[])`, [idler]);
+
+    const { rowCount: eksik } = await istemci.query(
+      `INSERT INTO urunler (id, ${TUM_ALANLAR.join(', ')})
+       SELECT * FROM unnest(
+         $1::text[], $2::text[], $3::text[], $4::text[], $5::numeric[],
+         $6::numeric[], $7::numeric[], $8::text[], $9::boolean[],
+         $10::text[], $11::timestamptz[]
+       ) AS t(id, ${TUM_ALANLAR.join(', ')})
+       ON CONFLICT (id) DO NOTHING`,
+      [idler, s('ad'), s('reyon'), s('gorsel'), s('fiyat'), s('eski_fiyat'),
+       s('miktar'), s('birim'), s('stokta'), s('kaynak'), s('guncellendi')]);
+
+    if (fazla || eksik) console.log(`  satır düzeltmesi: ${fazla} fazla silindi, ${eksik} eksik geri kondu`);
+
+    // 4) Geri yükleme sırasında oluşan geçmiş kayıtları da dahil, hepsi silinir
     await istemci.query('DELETE FROM fiyat_gecmisi');
 
     await istemci.query('COMMIT');
@@ -172,6 +198,22 @@ async function sina() {
   const { rows: [g1] } = await pool.query('SELECT count(*) n FROM fiyat_gecmisi');
   console.log(`   fiyat_gecmisi: ${g1.n} kayıt`);
 
+  /* SATIR SAYISI denemesi — asıl korunmak istenen senaryo bu.
+     asama3 sınaması ürün ekleyip siliyor; yarıda çökerse tabloda fazla ya
+     da eksik satır kalır. Alan geri yüklemesi bunu YAKALAMAZ, o yüzden
+     ikisini de burada fiilen yaratıyoruz. */
+  const sahteId = 'zz_deneme_' + Date.now();
+  const silinen = paket.urunler[paket.urunler.length - 1];
+  console.log(`
+3b) satır sayısı bozuluyor: "${sahteId}" ekleniyor, "${silinen.id}" siliniyor`);
+  await pool.query(
+    `INSERT INTO urunler (id, ad, reyon, fiyat, stokta, guncellendi)
+     VALUES ($1, 'DENEME — silinmeli', $2, 9.99, true, now())`,
+    [sahteId, silinen.reyon]);
+  await pool.query('DELETE FROM urunler WHERE id = $1', [silinen.id]);
+  const { rows: [bozukSayi] } = await pool.query('SELECT count(*)::int n FROM urunler');
+  console.log(`   tablo şimdi ${bozukSayi.n} ürün (kopyada ${paket.urunler.length})`);
+
   console.log('\n4) geri yükleniyor');
   await geri(paket);
 
@@ -189,10 +231,30 @@ async function sina() {
   console.log(`   ${gecmisTemiz ? '✓' : '✗'} fiyat_gecmisi boş (${g2.n})`);
   if (!gecmisTemiz) hata++;
 
+  /* Satır sayısı geri geldi mi: sahte gitti, silinen döndü. */
+  const { rows: [sahteKalan] } = await pool.query('SELECT count(*)::int n FROM urunler WHERE id = $1', [sahteId]);
+  const sahteGitti = sahteKalan.n === 0;
+  console.log(`   ${sahteGitti ? '✓' : '✗'} eklenen sahte ürün silindi (${sahteId})`);
+  if (!sahteGitti) hata++;
+
+  const { rows: [geriGelen] } = await pool.query(`SELECT id, ${TUM_ALANLAR.join(', ')} FROM urunler WHERE id = $1`, [silinen.id]);
+  const silinenDondu = !!geriGelen && TUM_ALANLAR.every((a) => duz(silinen[a]) === duz(geriGelen[a]));
+  console.log(`   ${silinenDondu ? '✓' : '✗'} silinen ürün bütün alanlarıyla geri geldi (${silinen.id})`);
+  if (!silinenDondu) {
+    hata++;
+    if (!geriGelen) console.log('       satır hiç yok');
+    else TUM_ALANLAR.filter((a) => duz(silinen[a]) !== duz(geriGelen[a]))
+      .forEach((a) => console.log(`       ${a}: ${duz(geriGelen[a])} — beklenen ${duz(silinen[a])}`));
+  }
+
   // Tablonun tamamı da kopyayla birebir mi?
   const { rows: hepsi } = await pool.query(SEC);
+  const sayiTamam = hepsi.length === paket.urunler.length;
+  console.log(`   ${sayiTamam ? '✓' : '✗'} ürün sayısı ${hepsi.length} (kopyada ${paket.urunler.length})`);
+  if (!sayiTamam) hata++;
   const fark = hepsi.filter((r, i) =>
-    r.id !== paket.urunler[i].id || ALANLAR.some((a) => duz(paket.urunler[i][a]) !== duz(r[a])));
+    !paket.urunler[i] || r.id !== paket.urunler[i].id ||
+    TUM_ALANLAR.some((a) => duz(paket.urunler[i][a]) !== duz(r[a])));
   console.log(`   ${fark.length === 0 ? '✓' : '✗'} tablonun tamamı kopyayla aynı (${hepsi.length} ürün, ${fark.length} fark)`);
   if (fark.length) { hata++; console.log(`       ilk farklar: ${fark.slice(0, 3).map((x) => x.id).join(', ')}`); }
 

@@ -106,9 +106,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const p = await searchParams;
   const sayfa = sayfaCoz(p.sayfa) ?? 1;
-  const { urunler } = await katalogGetir();
-  const toplam = toplamSayfa(urunler.length);
   const taban = siteTabani();
+
+  /* Katalog BURADA ÇEKİLMİYOR: üretilen tek şey canonical ile başlık ve
+     ikisi de yalnızca sayfa numarasına bağlı. Sınır denetimi (sayfa >
+     toplamSayfa) KatalogAlani'nda ve ondan da önce proxy'de yapılıyor —
+     sınır dışı adres buraya hiç ulaşmıyor. Ürün listesini yalnızca
+     kullanılmayan bir toplam için çekmek boşa işti. */
 
   /* rel=next / rel=prev BURADA DEĞİL: Metadata API'sinin "other" alanı
      <meta name="next"> üretiyor, oysa arama motorunun beklediği

@@ -219,6 +219,12 @@ try {
     eklenenTestUrunId = null;
   }
 } finally {
+ /* TEMİZLİK GARANTİSİ. Temizlik eskiden bu bloğun SONUNDAYDI; aşağıdaki
+    6-8. bölümlerden biri fırlatırsa finally içindeki istisna hemen dışarı
+    çıkıyor ve temizliğe hiç sıra gelmiyordu — yani "finally içinde" olmak
+    tek başına yetmiyordu. Bir kez öksüz yönetici kaydı bu yüzden kaldı.
+    Şimdi bölümler kendi try'ının içinde, temizlik onun finally'sinde. */
+ try {
   /* ═══════ 6. DELETE ucunun kapıları (J1) ═══════ */
   bolum("6 — DELETE kapıları: Content-Type ve id kaynağı");
   {
@@ -336,13 +342,24 @@ try {
     }
   }
 
-  /* ═══════ Temizlik ═══════ */
+ } finally {
+  /* ═══════ Temizlik — HER DURUMDA ═══════ */
   if (eklenenTestUrunId) {
     await sql`DELETE FROM urunler WHERE id = ${eklenenTestUrunId}`;
   }
   if (geciciYoneticiId) {
     await sql`DELETE FROM yoneticiler WHERE id = ${geciciYoneticiId}`;
   }
+  /* 6. bölüm kendi ürününü doğrudan SQL ile ekliyor ve normalde kendisi
+     siliyor; yarıda kalırsa o satır kalır. Ada göre süpürüyoruz — yalnızca
+     sınamanın kendi yazdığı ad kalıbı, başka hiçbir şey. */
+  const artik = await sql`DELETE FROM urunler WHERE ad LIKE 'SINAMA %' RETURNING id`;
+  if (artik.length) console.log(`  temizlik: ${artik.length} artık sınama ürünü silindi`);
+  /* Geçici hesabın oturumları FK'siz kalmasın diye ada göre de bakıyoruz.
+     'meydan' ve 'zeynep' bu kalıba UYMAZ — gerçek hesaplara dokunulmuyor. */
+  const artikY = await sql`DELETE FROM yoneticiler WHERE kullanici_adi LIKE 'test_yonetici_%' RETURNING id`;
+  if (artikY.length) console.log(`  temizlik: ${artikY.length} artık sınama hesabı silindi`);
+ }
 }
 
 console.log(`\n${"═".repeat(62)}`);

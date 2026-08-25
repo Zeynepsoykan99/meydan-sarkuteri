@@ -41,6 +41,13 @@ export default function KatalogBolumu({
      yolu o. Hidrasyondan sonra JavaScript devralıyor ve bağlantı ancak
      otomatik sınıra ulaşınca görünüyor. */
   const [hidre, setHidre] = useState(false);
+  /* LINT: react-hooks/set-state-in-effect burada BİLEREK ihlal ediliyor.
+     Kuralın amacı zincirleme render'ı önlemek; burada kastedilen şey tam
+     olarak "sunucuda bir, istemcide başka" çizmek. Sunucu çıktısı JS'siz
+     ziyaretçi için bağlantıyı GÖRÜNÜR vermek zorunda, hidrasyondan sonra
+     onu gizliyoruz. Bu bilgi render sırasında okunamaz (okunsaydı sunucu
+     ve istemci aynı sonucu üretir, hidrasyon uyuşmazlığı çıkardı), tek
+     doğru yer effect. Bir kez çalışıyor, bağımlılığı boş. */
   useEffect(() => setHidre(true), []);
 
   const reyonAdlari = useMemo(
@@ -167,7 +174,14 @@ export default function KatalogBolumu({
   }, [suzgecEtkin, otomatikBitti, dahaVar, adet]);
 
   /* Süzgeç açılıp kapandığında sayfalama başa dönsün — yoksa süzgeci
-     kaldıran ziyaretçi, önceden açtığı 150 ürünle karşılaşır. */
+     kaldıran ziyaretçi, önceden açtığı 150 ürünle karşılaşır.
+
+     LINT: react-hooks/set-state-in-effect burada da BİLEREK ihlal
+     ediliyor. Sıfırlama bir GEÇİŞE tepki: "süzgeç vardı, artık yok".
+     Render sırasında türetilemez, çünkü suzgecEtkin'in önceki değerini
+     bilmek gerekiyor. Süzgeci değiştiren her yere elle setAdet(30)
+     serpiştirmek alternatifti; tek bir yerde toplamak yerine altı ayrı
+     çağrı bırakırdı ve biri unutulduğunda sessizce bozulurdu. */
   useEffect(() => {
     if (!suzgecEtkin) setAdet(SAYFA_BOYUTU);
   }, [suzgecEtkin]);
