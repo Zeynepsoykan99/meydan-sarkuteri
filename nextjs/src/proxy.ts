@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import kimlikler from "./urun-kimlikleri.json";
+import { sayfaCoz, toplamSayfa } from "./lib/sayfalama";
 
 /* =====================================================================
    GEÇİCİ ÇÖZÜM — olmayan ürün id'si 404 dönsün diye.
@@ -50,9 +51,35 @@ import kimlikler from "./urun-kimlikleri.json";
    ===================================================================== */
 
 const GECERLI = new Set(kimlikler as string[]);
+const TOPLAM_SAYFA = toplamSayfa(kimlikler.length);
+
+/* Var olmayan bir adrese yeniden yazınca Next kendi 404'ünü üretiyor.
+   Yol adı bilerek "çakışamaz" biçimde — app/ altında böyle bir rota yok. */
+const BULUNAMADI = "/_bulunamadi";
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  /* ANA SAYFA SAYFALAMASI — ?sayfa doğrulaması.
+
+     NEDEN BURADA: page.tsx'te notFound() çağrılıyor ama işe yaramıyor.
+     searchParams bir çalışma zamanı API'si olduğu için katalog <Suspense>
+     içinde akıyor; akış başladığında yanıt başlıkları çoktan gönderilmiş
+     oluyor ve durum kodu artık 200'den değiştirilemiyor. Sonuç YUMUŞAK
+     404: gövdede "bulunamadı" yazıyor ama arama motoru 200 görüyor ve
+     ?sayfa=99, ?sayfa=100 … sonsuz sayıda "ince içerik" adresi
+     indeksleyebiliyor.
+
+     İstek sayfaya varmadan burada kesiliyor; /urun/[id] için kurulan
+     desenin aynısı. page.tsx'teki notFound() yine duruyor: proxy bir gün
+     kaldırılırsa doğru davranış orada yazılı kalsın diye. */
+  if (pathname === "/" && searchParams.has("sayfa")) {
+    const sayfa = sayfaCoz(searchParams.get("sayfa") ?? undefined);
+    if (sayfa === null || sayfa > TOPLAM_SAYFA) {
+      return NextResponse.rewrite(new URL(BULUNAMADI, request.url));
+    }
+    return NextResponse.next();
+  }
 
   // matcher zaten daraltıyor; yine de biçim kontrolü yapıp emin oluyoruz
   const esles = /^\/urun\/([^/]+)\/?$/.exec(pathname);
@@ -61,12 +88,11 @@ export function proxy(request: NextRequest) {
   const id = decodeURIComponent(esles[1]);
   if (GECERLI.has(id)) return NextResponse.next();
 
-  /* Var olmayan bir adrese yeniden yaz: Next kendi 404'ünü üretir.
-     Yol adı bilerek "çakışamaz" biçimde — app/ altında böyle bir rota
-     yok ve olması da beklenmiyor. */
-  return NextResponse.rewrite(new URL("/_urun-bulunamadi", request.url));
+  return NextResponse.rewrite(new URL(BULUNAMADI, request.url));
 }
 
 export const config = {
-  matcher: "/urun/:id*",
+  /* Ana sayfa da kapsamda: ?sayfa doğrulaması için. Parametresiz "/"
+     isteği ilk if'ten geçmeden next() ile devam ediyor, ek maliyeti yok. */
+  matcher: ["/", "/urun/:id*"],
 };

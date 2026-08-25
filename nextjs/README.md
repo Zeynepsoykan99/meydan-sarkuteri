@@ -1,9 +1,7 @@
 # Meydan Şarküteri — Next.js Sürümü
 
 Bu proje Next.js 16.2 App Router, Tailwind CSS v4 ve Neon Postgres tabanlıdır.
-**Henüz yayında değil:** canlıdaki adres hâlâ eski vanilla siteyi sunuyor.
-Yayına geçiş `nextjs` dalı `main`'e birleştirildiğinde olur (bkz. kökteki
-README, "Yayın" bölümü).
+`nextjs` dalı `main`'e birleştirildi; canlıdaki adres artık bu sürümü sunuyor.
 
 ## Neden Next.js
 
@@ -24,7 +22,9 @@ npm run build && npm start
 `data/dukkan.json` depo kökünde duruyor; iki sürüm aynı dosyayı paylaşıyor.
 `prebuild` (yani `scripts/db-isit.mjs`) dosyayı `nextjs/data/` altına kopyalar,
 çünkü Vercel'de kök `nextjs/` olduğunda üst dizine erişim güvenilir değil.
-`lib/dukkan.ts` önce kopyayı, sonra `../data/` yolunu dener.
+`lib/dukkan.ts` bu kopyayı doğrudan `import` ile okuyor (bkz. dosyadaki
+gerekçe: `readFile` + iki yol denemesi hem NFT izleme hem de Vercel kısıtı
+yüzünden sessizce kırılıyordu).
 
 ## Yapı
 
@@ -68,12 +68,16 @@ src/lib/
   yonetici.ts        yama doğrulama, yeni ürün doğrulama, fiyat uyarıları
 
 tests/
-  dukkan.mjs                 Aşama 1 — saat, katalog, erişilebilirlik (47)
+  dukkan.mjs                 Aşama 1 — saat, katalog, erişilebilirlik (50) [PW]
   asama2.mjs                 Aşama 2 — yetkisiz taraf, durum kodları (42)
   asama2-yetkili.mjs         Aşama 2 — gerçek oturumla yazma yolu (46)
-  asama3-urun-yonetimi.mjs   Aşama 3 — ürün ekleme/silme (21)
+  asama3-urun-yonetimi.mjs   Aşama 3 — ürün ekleme/silme (35)
   saglik.mjs                 sağlık ucu, PWA, yönlendirmeler, başlıklar (21)
-  agirlik.mjs                sayfa ağırlığı ölçümü (sınama değil, rapor)
+  sayfalama.mjs              ana sayfa sayfalaması, 8 bölüm (55) [PW]
+  agirlik.mjs                sayfa ağırlığı ölçümü (sınama değil, rapor) [PW]
+  deploy-denetim.mjs         dağıtım sonrası denetim (rol duyarlı)
+
+  [PW] = Playwright gerekiyor (npm i --no-save playwright-core)
 ```
 
 ## Kararlar
@@ -98,6 +102,38 @@ tests/
   15 dk pencerede 5 deneme hız sınırı. Sahte hash ile zamanlama saldırısı önlenir.
 - **Çerez `secure` koşullu**: `NODE_ENV === "production"` → yerelde `http://`
   üzerinden geliştirme yapılabilsin. Risk belgelenmiş (bkz. `api/giris/route.ts`).
+- **Ana sayfa sayfalaması** (`lib/sayfalama.ts`): sunucu 30 ürün çiziyor,
+  kaydırdıkça 30'ar ekleniyor, 150'de duruyor, sonrası düğmeyle. Ham HTML
+  634 KB'dan 232 KB'a indi.
+
+  **JavaScript açıkken ve kapalıyken düğme farklı davranıyor — bilinçli:**
+
+  | | JavaScript AÇIK | JavaScript KAPALI |
+  |---|---|---|
+  | İlk görünüm | 30 ürün, kaydırınca otomatik 150'ye kadar | 30 ürün, otomatik yükleme yok |
+  | "Daha fazla göster" | 150'ye ulaşınca çıkar; **aynı sayfada** listeyi 180'e uzatır, adres değişmez | **baştan görünür**; `?sayfa=2`'ye **gider**, sonraki 30 ürünü gösterir |
+  | Sayfa bağlantıları | gizli (otomatik yükleme yeterli) | `<nav aria-label="Sayfalar">` ile önceki/sonraki |
+
+  Düğme her iki durumda da **gerçek bir `<a href>`**; JS yalnızca tıklamayı
+  yakalayıp `preventDefault` ediyor (Ctrl/Cmd+tık hariç — yeni sekme çalışsın).
+  Yani JS kapalıyken katalog gezilebilir kalıyor ve arama motoru
+  `?sayfa=2 … ?sayfa=16` zincirini izleyebiliyor; `rel=prev/next` ve her
+  sayfaya kendi `canonical`'ı bunun için var.
+
+  JS açıkken düğmenin **sayfa değiştirmemesi**, ziyaretçinin kaydırma konumunu
+  ve o ana kadar açtığı 150 ürünü kaybetmemesi için. JS kapalıyken durum
+  tutulamadığı için tek seçenek gerçek gezinme.
+
+- **Geçersiz `?sayfa` proxy'de yakalanıyor**: `notFound()` Suspense içinden
+  başlıklar gönderildikten sonra çalıştığı için 200 + soft-404 veriyordu.
+  `proxy.ts` render öncesi doğruluyor — `/urun/[id]` ile aynı desen.
+
+- **Otomatik yükleme IntersectionObserver DEĞİL, konum denetimi**: IO yalnızca
+  kesişim *değişince* haber veriyor; sayfa sonuna tek hamlede atlandığında
+  (mobil ivmeli kaydırma) nöbetçi atlanıyor ve özellik sessizce ölüyordu.
+  Izgaranın altındaki kuyruk 390px'te 1477px, 1280px'te 969px olduğu için
+  kusur masaüstünde görünmüyordu. `tests/sayfalama.mjs` bölüm 7 kilitliyor.
+
 - **Panel mobil öncelikli**: esnafın telefonundan fiyat onayı ve düzenleme.
   10 kat sıçrama kontrolü, geri alma, uyarı sistemi.
 
@@ -112,8 +148,21 @@ Bedeli ve kalıcı çözüm: `ILERLEME.md`.
 
 ## Derleme Özeti
 
-484 sayfa (470 ürün + ana + /afis + /giris + /panel + 404 + kabuk), PPR,
-revalidate 1m / expire 1h. Derleme süresi: ~6 saniye.
+**487 statik üretim birimi.** Rota tablosunda görünenler: 470 ürün sayfası,
+ana sayfa, `/afis`, `/giris`, `/panel`, `/robots.txt`, `/sitemap.xml`, 404 ve
+`/urun/[id]` kabuğu (= 478); kalan 9'u bunların RSC/segment ve `global-error`
+çıktıları. 8 API ucu dinamik (ƒ), ön-üretilmiyor. PPR, revalidate 1m / expire 1h.
+
+Süreler ölçüldü, ortam başına ayrı:
+
+| | Yerel (8 çekirdek) | Vercel (2 çekirdek, 1 worker) |
+| --- | --- | --- |
+| `Compiled successfully` | 2.4–2.6 sn | 5.5 sn |
+| Statik sayfa üretimi | 3.6–3.7 sn | 13.3 sn |
+| Toplam derleme | 14–15 sn | 30 sn (`Build Completed`) |
+| Dağıtım (kuyruk+yükleme dahil) | — | 44 sn |
+
+Yerel sayılar üst üste üç derlemenin aralığı; üçü de 487/487 üretti.
 
 ## Sınama
 
@@ -121,22 +170,45 @@ revalidate 1m / expire 1h. Derleme süresi: ~6 saniye.
 npm i --no-save playwright-core     # projeye bağımlılık eklemez
 npm run build && npm start -- -p 3001
 
-node --experimental-strip-types tests/dukkan.mjs
+node --experimental-strip-types tests/dukkan.mjs               # Playwright
+node --experimental-strip-types tests/sayfalama.mjs            # Playwright
 node --experimental-strip-types tests/asama2.mjs
 node --experimental-strip-types tests/saglik.mjs
-node --experimental-strip-types tests/asama2-yetkili.mjs      # CANLI DB'ye yazar
+node --experimental-strip-types tests/asama2-yetkili.mjs       # CANLI DB'ye yazar
 node --experimental-strip-types tests/asama3-urun-yonetimi.mjs # CANLI DB'ye yazar
 ```
 
-Toplam: **177 sınama**, %100 geçiyor (20 Ağustos 2026).
+Canlı veritabanına yazan iki dosyayı koşmadan önce güvenlik ağını kur:
+
+```
+node --env-file-if-exists=.env.local scripts/deneme-yedegi.js sina   # ağı doğrula
+node --env-file-if-exists=.env.local scripts/deneme-yedegi.js al     # kopya al
+#  … sınamalar …
+node --env-file-if-exists=.env.local scripts/deneme-yedegi.js geri   # tabana dön
+```
+
+Toplam: **249 sınama**, %100 geçiyor (25 Ağustos 2026, altısı da ölçülerek
+koşuldu). Dağılım: dukkan 50, sayfalama 55, asama2 42, asama2-yetkili 46,
+asama3 35, saglik 21. Bunların **144'ü Playwright gerektirmiyor**
+(asama2 + asama2-yetkili + asama3 + saglik); dukkan ve sayfalama tarayıcı
+açıyor.
 
 Son iki dosya canlı veritabanına yazıyor. İkisi de yazdığını geri alıyor:
 `asama2-yetkili` ürünlerin kopyasını alıp sonunda satır satır doğrulayarak
 geri yüklüyor, `asama3` eklediği ürünü ve geçici hesabı `finally` içinde
 siliyor. Ayrıntı: `ILERLEME.md`.
 
-`npm run lint` **temiz değil**: 26 hata (19'u bu turdan önce de vardı).
-Çoğu `any` kullanımı ve efekt içinde `setState`. Derlemeyi engellemiyor.
+`npm run lint`: **2 hata, 0 uyarı.** İki hatanın **ikisi de**
+`KatalogBolumu.tsx`'te ve ikisi de `react-hooks/set-state-in-effect`
+(satır ~44 ve ~172). İkisi de **bilinçli**; gerekçeleri kodda, çağrıların
+hemen üstünde yazılı — biri hidrasyon bayrağı (sunucu çıktısı JS'siz
+ziyaretçi için farklı olmak zorunda), diğeri süzgeç kapanınca sayfalamayı
+sıfırlama (bir geçişe tepki, render sırasında türetilemez). Derlemeyi
+engellemiyor.
+
+Daha önce burada bir de `page.tsx`'te kullanılmayan `toplam` değişkeni
+uyarısı vardı; değişken ve yalnızca onun için yapılan `katalogGetir()`
+çağrısı kaldırıldı.
 
 ## Vercel dağıtımı — ölçülmüş davranışlar
 

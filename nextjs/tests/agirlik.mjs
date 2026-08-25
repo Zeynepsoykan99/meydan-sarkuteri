@@ -27,6 +27,11 @@ const CHROME = process.env.CHROME_YOLU || "C:/Program Files/Google/Chrome/Applic
 const ESIK_KB = process.env.ESIK_KB ? Number(process.env.ESIK_KB) : null;
 const ESIK_ISTEK = process.env.ESIK_ISTEK ? Number(process.env.ESIK_ISTEK) : null;
 const GENISLIK = Number(process.env.GENISLIK || 1280);
+/* KAYDIR=0 → sona kaydırma, yalnızca İLK YÜKLEMEYİ ölç.
+   Sayfalama geldikten sonra bu ayrım şart oldu: sona kaydırmak otomatik
+   yüklemeyi tetikliyor ve ölçüm "ilk yükleme" olmaktan çıkıp "150 ürüne
+   kadar gezinme" oluyor. İki sayı da anlamlı ama karıştırılmamalı. */
+const KAYDIR = process.env.KAYDIR !== "0";
 
 const kb = (b) => Math.round(b / 1024);
 
@@ -56,8 +61,10 @@ sayfa.on("response", async (yanit) => {
 await sayfa.goto(B + "/", { waitUntil: "networkidle", timeout: 180000 });
 /* Tembel görseller: sona kaydır, sonra ağ dursun diye bekle. Bu olmadan
    470 kartın görselleri hiç indirilmez ve ölçüm gerçeği yansıtmaz. */
-await sayfa.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-await sayfa.waitForTimeout(2500);
+if (KAYDIR) {
+  await sayfa.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await sayfa.waitForTimeout(2500);
+}
 try {
   await sayfa.waitForLoadState("networkidle", { timeout: 30000 });
 } catch {
