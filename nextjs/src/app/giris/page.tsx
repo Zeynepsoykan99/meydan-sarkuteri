@@ -62,18 +62,32 @@ export default function GirisSayfasi() {
       if (res.ok && veri.girisli) {
         setParola("");
         if (veri.sifreDegistirmeli) {
+          /* Aynı sayfada kalıyoruz, form el değiştiriyor: kilidi aç. */
+          setIslemde(false);
           setDurum("degistir");
         } else {
+          /* KİLİT AÇILMIYOR — bilerek. router.replace hemen dönüyor ama
+             gezinme sürüyor: panelin RSC yükü inene kadar bu sayfa ekranda
+             kalıyor. Kilidi burada açarsak düğme "Giriş yap" hâline döner
+             ve hiçbir şey olmamış gibi görünür.
+
+             Ölçüldü (200 kbps / 900 ms): kimlik doğrulama 1268 ms'de
+             bitiyor, panele varış 3954 ms. Aradaki 2.7 saniye boyunca
+             ziyaretçi hazır görünen bir düğmeye bakıyordu ve ikinci kez
+             basmaya davetliydi — ikinci deneme 15 dk / 5 deneme hız
+             sınırını da tüketirdi.
+
+             Bayrak açık kalıyor; bileşen gezinme bitince zaten sökülüyor. */
           router.replace("/panel");
         }
         return;
       }
 
+      setIslemde(false);
       setHata(veri?.hata ?? "Kullanıcı adı veya şifre hatalı");
     } catch {
-      setHata("Bağlantı kurulamadı. Tekrar deneyin.");
-    } finally {
       setIslemde(false);
+      setHata("Bağlantı kurulamadı. Tekrar deneyin.");
     }
   }
 
@@ -107,15 +121,19 @@ export default function GirisSayfasi() {
         setMevcutSifre("");
         setYeniSifre("");
         setYeniSifreTekrar("");
+        /* handleGiris ile aynı gerekçe: gezinme sürerken kilit açılmıyor.
+           Bu ekran ölçümde "doğru" görünmüştü ama kodu aynıydı — form
+           örnekleme aralıkları arasında söküldüğü için şanstan öyle
+           göründü. İkisi de artık aynı ve bilinçli davranıyor. */
         router.replace("/panel");
         return;
       }
 
+      setIslemde(false);
       setHata(veri?.hata ?? "Şifre değiştirilemedi.");
     } catch {
-      setHata("Bağlantı kurulamadı. Tekrar deneyin.");
-    } finally {
       setIslemde(false);
+      setHata("Bağlantı kurulamadı. Tekrar deneyin.");
     }
   }
 

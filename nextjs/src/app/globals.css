@@ -189,6 +189,54 @@
   .kart-gorsel-alan.gorsel-yok::after { font-size: 28px; }
   .detay-gorsel-alan.gorsel-yok::after { font-size: 42px; }
 
+  /* Görsel HENÜZ gelmedi (hata değil, yol devam ediyor). gorsel-yok ile
+     aynı yerde duruyor ki iki durum tek yerden okunsun; sınıfı
+     GorselNobeti koyup yükleme bitince kaldırıyor.
+
+     NEDEN GEREKLİ: ürün sayfasında 600×600'lük alan zaten ayrılmış
+     (yerleşim kaymıyor, öyle de kalmalı) ama içi boştu — yavaş bağlantıda
+     ziyaretçi bir şeyin geldiğini anlamıyordu.
+
+     Kutunun kendi zemini bg-tezgah; buraya ondan bir ton koyu, yavaşça
+     nefes alan bir yüzey koyuyoruz. */
+  .kart-gorsel-alan.gorsel-bekliyor::before,
+  .detay-gorsel-alan.gorsel-bekliyor::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--color-cizgi);
+    /* KENDİNİ SONLANDIRIYOR — JavaScript'e bağımlı değil.
+       Sınıfı sunucu basıyor, GorselNobeti yükleme bitince kaldırıyor.
+       Ama JS kapalıysa kaldıran kimse yok: o yüzden animasyon 6 tur
+       (~8,4 sn) sonra saydama gidiyor ve forwards ile orada kalıyor.
+       Sonuç, bugünkü görünümün aynısı (altta bg-tezgah). Yer tutucu
+       hiçbir durumda görselin üstünde kalıcı olamıyor. */
+    animation: gorsel-nefes 1.4s ease-in-out 6 forwards;
+  }
+
+  @keyframes gorsel-nefes {
+    0%       { opacity: 0.55; }
+    50%      { opacity: 0.9; }
+    83%      { opacity: 0.55; }
+    100%     { opacity: 0; }
+  }
+
+  /* Hareket istemeyene sabit yüzey — yer tutucu yine görünür, yalnızca
+     nefes almıyor. */
+  @media (prefers-reduced-motion: reduce) {
+    .kart-gorsel-alan.gorsel-bekliyor::before,
+    .detay-gorsel-alan.gorsel-bekliyor::before {
+      /* Hareket istemeyen için nefes yok; yine de kendini sonlandırmalı,
+         yoksa JS kapalıyken kalıcı olur. Tek turluk sönme. */
+      animation: gorsel-sonlan 8.4s linear forwards;
+      opacity: 0.7;
+    }
+    @keyframes gorsel-sonlan {
+      0%, 92% { opacity: 0.7; }
+      100%    { opacity: 0; }
+    }
+  }
+
   .kart-gorsel {
     width: 100%;
     height: auto;
