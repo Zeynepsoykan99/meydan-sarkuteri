@@ -212,9 +212,25 @@ uyarısı vardı; değişken ve yalnızca onun için yapılan `katalogGetir()`
 
 ## Vercel dağıtımı — ölçülmüş davranışlar
 
-Proje: **meydan-sarkuteri-next**, Root Directory `nextjs`, Production
-Branch `nextjs`. Depo kökündeki vanilla site ayrı bir projede
-(`meydan-sarkuteri`, Production Branch `main`) kalmaya devam ediyor.
+Depo İKİ Vercel projesine bağlı ve **ikisinin de Root Directory'si
+`nextjs`** — yani ikisi de bu uygulamayı dağıtıyor:
+
+| Proje | Production Branch | Üretim takma adı | Rolü |
+| --- | --- | --- | --- |
+| `meydan-sarkuteri` | `main` | `meydan-sarkuteri.vercel.app` | **canlı** |
+| `meydan-sarkuteri-next` | `nextjs` | `meydan-sarkuteri-next.vercel.app` | ikinci kopya |
+
+Bu bölüm önceden `meydan-sarkuteri`'yi "depo kökündeki vanilla site"
+diye anlatıyordu; **doğru değil** — o projenin de Root Directory'si
+`nextjs`. Kökteki vanilla dosyalar (`index.html`, `panel.html`, `api/`)
+depoda duruyor ama hiçbir projeden dağıtılmıyor.
+
+İki sonucu var:
+- `main`'e birleşen her şey **canlıya** çıkıyor; `meydan-sarkuteri-next`
+  ise `nextjs` dalında donmuş kalıyor ve `main` oraya yalnızca preview
+  olarak iniyor. İki adres farklı sürümler sunabilir.
+- İkinci kopyanın üretim takma adı korunmuyor (aşağıya bakın), bu yüzden
+  `SITE_ROLU` ile indekslemeye kapatılıyor.
 
 ### DATABASE_URL "Sensitive" işaretliyken dağıtıma ULAŞMIYOR
 

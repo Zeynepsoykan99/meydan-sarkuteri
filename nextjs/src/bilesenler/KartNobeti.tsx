@@ -24,8 +24,23 @@ import { useLinkStatus } from "next/link";
    loading.js yoksa" için öneriliyor; kartlarımızda prefetch BİLEREK
    kapalı (UrunKarti'ndaki gerekçeye bakın: 470 bağlantı önden getirilirse
    27 istek / 81 KB boşa gidiyordu). Aynı doküman "bağlantı önceden
-   getirilmişse bekleme durumu atlanır" diyor — yani hızlı yolda
-   titreşim üretmiyor, ölçütün ikinci yarısı da sağlanıyor.
+   getirilmişse bekleme durumu atlanır" diyor.
+
+   CANLIDA ÖLÇÜLDÜ (26 Ağustos 2026) — "HIZLIDA GÖRÜNMEZ" ÖLÇÜTÜ DÜŞTÜ:
+   Yukarıdaki "sınırsız 32 ms / görünmedi" rakamı YEREL sunucuyla
+   alınmıştı. Canlıda (meydan-sarkuteri.vercel.app, iad1) ölçüm
+   MutationObserver ile yinelendi — nöbet HER hızda tıklamadan ~2 ms
+   sonra açılıyor, çünkü RSC gidiş-dönüşü kısıtsız ağda bile 150 ms'lik
+   soluklaşmadan uzun:
+
+       sınırsız  ·  açıldı 2 ms  ·  kapandı 344 / 573 ms
+       5 Mbps    ·  açıldı 1 ms  ·  kapandı 713 / 826 ms
+       200 kbps  ·  açıldı 2 ms  ·  kapandı 911 / 918 ms
+
+   KARAR: DOKUNULMADI. 342 ms zaten geri bildirim isteyen bir süre;
+   titreşim riski 30-50 ms'lik beklemeler için geçerliydi ve gerçek ağda
+   o aralık hiç oluşmuyor. Ölçüt yanlış kurulmuştu — yerel gecikmeyi
+   canlının yerine koyuyordu; uygulama doğru.
 
    Dokümanın yerleşim kayması uyarısına uyuluyor: öğe HER ZAMAN çiziliyor,
    mutlak konumlu, yalnızca opaklığı değişiyor. Kartın yüksekliğine

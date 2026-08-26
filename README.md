@@ -377,7 +377,8 @@ og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
 
 - **Reyon filtresi** — 13 reyon, üstteki kaydırılabilir şeritten seçilir.
 - **Arama** — Türkçe karakter duyarsız; "cıkolata" yazsan da "Çikolata"yı bulur.
-  `/` tuşu arama kutusuna odaklanır.
+  (Arşivdeki vanilla arayüzde `/` tuşu arama kutusuna odaklanıyordu; Next
+  sürümünde bu kısayol **yok** — ölçüldü, odak değişmiyor.)
 - **Sıralama** — reyon sırası, artan/azalan fiyat, birim fiyat, en çok indirim, A–Z.
 - **Birim fiyat** — ₺/kg, ₺/L ya da ₺/adet. Önce verideki `miktar`/`birim`
   alanlarına bakılır; onlar boşsa ürün adı ayrıştırılır (`4x80 Ml`, `1,25 L`,
@@ -387,21 +388,26 @@ og.png                   Paylaşım görseli, siteden üretilmiş 1200×630
   şeyler değil, tek listede sıralanınca ucuz görünen adetliler başa geçiyordu.
 - **Stok durumu** — `stokta: false` olan ürün "Şu an yok" rozetiyle, soluk
   görselle ve listenin sonunda görünür.
-- **Ürün ayrıntısı** — karta tıklayınca açılır (native `<dialog>`: Esc ve odak
-  tuzağı tarayıcıdan gelir). Büyük görsel, birim fiyat, önceki fiyat ve verinin
-  hangi katalogdan geldiği. **Next.js sürümünde** her ürünün `/urun/u001`
-  biçiminde gerçek, sunucuda çizilen kendi sayfası var; arşivdeki vanilla
-  arayüzde bu bir `<dialog>`'du ve adres `?urun=u001` olarak yazılıyordu.
+- **Ürün ayrıntısı** — karta tıklayınca `/urun/u001` adresine gidilir: her
+  ürünün sunucuda çizilen, kendi başlığı ve açıklaması olan gerçek bir sayfası
+  var. Büyük görsel, birim fiyat, önceki fiyat ve verinin hangi katalogdan
+  geldiği orada. (Arşivdeki vanilla arayüzde bu bir native `<dialog>`'du ve
+  adres `?urun=u001` olarak yazılıyordu; Next sürümünde hiç `<dialog>` yok.)
 - **Filtreler** — "Sadece indirimliler" düğmesi ve fiyat aralığı kutuları.
 - **Günün etiketi** — kataloğun en yüksek indirimli ürününden otomatik üretilir.
 - **Düşen etiketler** — indirimli ürünlerin yatay rayı. Katalogda hiç indirim
   kalmazsa bu bölüm de ona giden düğme de gizlenir.
 - **Veri tarihi rozeti** — vitrinde fiyatların hangi güne ait olduğu yazar.
   Metin `guncellendi` alanından üretilir, elle yazılmaz ki eskimesin.
-- **Paylaşılabilir bağlantı** — seçili reyon, arama, sıralama, filtreler ve açık
-  ürün adres çubuğuna yazılır (`?reyon=dondurma&ara=çubuk&sirala=ucuz`), geri
-  tuşu önceki duruma döner. `file://` ile açıldığında tarayıcı buna izin vermez;
-  her şey yine çalışır, yalnızca adres güncellenmez.
+- **Paylaşılabilir bağlantı — yalnızca ürün sayfaları için.** Her ürünün
+  `/urun/u001` biçiminde gerçek adresi var ve paylaşılabilir. Ana sayfada
+  **sayfa numarası** adrese yazılır (`/?sayfa=3`), ama **süzgeç durumu
+  YAZILMAZ**: seçili reyon, arama metni, sıralama ve fiyat aralığı adres
+  çubuğuna geçmiyor, dolayısıyla süzülmüş bir görünüm paylaşılamıyor ve geri
+  tuşu süzgeci geri almıyor. Arşivdeki vanilla arayüzde bu vardı
+  (`?reyon=dondurma&ara=çubuk&sirala=ucuz`); Next sürümüne taşınmadı.
+  Eski `?urun=u001` bağlantıları da artık ürünü açmıyor — 200 dönüp sessizce
+  ana sayfayı gösteriyorlar (ölçüldü).
 - Mobil uyumlu, klavyeyle gezilebilir, `prefers-reduced-motion` desteklenir.
 - **Next.js sürümünde ürünleri sunucu basar**: JavaScript kapalıyken de
   katalog görünür ve gezilebilir (sayfalama gerçek `?sayfa=N` bağlantılarıyla

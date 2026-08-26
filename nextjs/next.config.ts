@@ -3,9 +3,37 @@ import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
 
 const nextConfig: NextConfig = {
-  /* Depoda iki lockfile var (kök vanilla site + bu uygulama); Turbopack
-     kökü yanlış tahmin ediyordu. Açıkça belirtiliyor. */
-  turbopack: { root: fileURLToPath(new URL(".", import.meta.url)) },
+  /* Depoda iki lockfile var (kök vanilla site + bu uygulama); kök
+     otomatik bulunmaya bırakılırsa yanlış tahmin ediliyor. Açıkça
+     belirtiliyor.
+
+     NEDEN turbopack.root DEĞİL outputFileTracingRoot:
+     Next 16 ikisini TEK bir köke indirgiyor (server/config.js):
+
+         let rootDir = outputFileTracingRoot || turbopack.root;
+         if (!rootDir) { ...lockfile tahmini... }
+
+     İkisi de ayarlıysa ve DEĞERLERİ FARKLIYSA uyarı basıp
+     outputFileTracingRoot'u kullanıyor. Vercel kendi modifyConfig'inde
+     outputFileTracingRoot'u depo köküne (/vercel/path0) ayarlıyor; biz
+     turbopack.root'a nextjs dizinini yazdığımız için her üretim
+     derlemesi bu uyarıyı iki kez basıyordu — ve bizim değerimiz zaten
+     yok sayılıyordu.
+
+     Yetkili anahtarı yazınca çelişki yapısal olarak ortadan kalkıyor:
+     tek anahtar kaldığı için karşılaştırılacak ikinci değer yok.
+     Lockfile tahmini de devre dışı kalmaya devam ediyor, çünkü rootDir
+     yine doluyor.
+
+     DEĞER NEDEN ".." (DEPO KÖKÜ), "." (nextjs/) DEĞİL:
+     Vercel kendi modifyConfig'inde bu anahtarı depo köküne
+     (/vercel/path0) yazıyor — Root Directory `nextjs` olsa bile. Biz
+     nextjs dizinini yazarsak yerelde ve Vercel'de İKİ FARKLI kök
+     kullanılır; izleme yerelde dar, üretimde geniş olur ve fark ancak
+     bir dosya paketten düştüğünde anlaşılır. Depo kökünü yazınca iki
+     ortam aynı kökte buluşuyor. İki lockfile'lı depoda tahmin yine
+     devrede değil, çünkü değer açıkça verilmiş. */
+  outputFileTracingRoot: fileURLToPath(new URL("..", import.meta.url)),
   /* Cache Components: Next 16'nın önbellek modeli. Elle Cache-Control
      yazmıyoruz; önbelleklenecek şeyi 'use cache' + cacheLife belirliyor.
      PPR'yi de varsayılan yapıyor: statik kabuk hemen, dinamik parça akarak. */
