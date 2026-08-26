@@ -29,10 +29,14 @@ sayesinde yayımlanmıyor; eski adresler (`/index.html`, `/giris.html`,
 karşılanıyor — ölçüldü, dördü de sırasıyla `/`, `/giris`, `/panel`, `/afis`
 adresine gidiyor.
 
-İki Vercel projesi var: **meydan-sarkuteri** (canlı, Production Branch
-`main`) ve **meydan-sarkuteri-next** (preview, Production Branch `nextjs`).
-Hangi rolde çalıştığını `SITE_ROLU` değişkeni söylüyor; tanımsızsa site
-kendini `preview` sayıp arama motorlarına kapatıyor (bkz. `nextjs/src/lib/ortam.ts`).
+Tek Vercel projesi var: **meydan-sarkuteri** (canlı, Production Branch
+`main`, Root Directory `nextjs`). 26 Ağustos 2026'ya kadar ikinci bir proje
+(`meydan-sarkuteri-next`, Production Branch `nextjs`) daha vardı; `nextjs`
+dalı birleşip silindikten sonra yeni üretim dağıtımı üretemez hâle geldiği
+ve kataloğun eski bir kopyasını herkese açık sunduğu için kaldırıldı.
+
+Rolü `SITE_ROLU` değişkeni söylüyor; tanımsızsa site kendini `preview`
+sayıp arama motorlarına kapatıyor (bkz. `nextjs/src/lib/ortam.ts`).
 
 ## Veritabanı
 

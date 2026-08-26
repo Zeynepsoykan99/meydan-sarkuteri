@@ -13,9 +13,11 @@ import { siteTabani } from "@/lib/ortam";
    lastModified ürünlerin guncellendi damgasından geliyor; veritabanı
    okunamazsa katalogGetir zaten yedeğe düşüyor, harita yine üretiliyor. */
 /* Taban artık SABİT DEĞİL. Önceden "https://meydan-sarkuteri.vercel.app"
-   yazılıydı ve preview projesinde bu yanlıştı: preview'ın sitemap'i canlı
-   sitenin adreslerini bildiriyordu. Gerekçe ve öncelik sırası
-   lib/ortam.ts'te. */
+   yazılıydı ve canlı olmayan her kopyada bu yanlıştı: o kopyanın sitemap'i
+   canlı sitenin adreslerini bildiriyordu. Bugün tek proje var ve sabit
+   değer yine doğru sonucu verirdi — ama dal preview'ları ve ileride
+   açılabilecek ikinci bir ortam için taban yine türetiliyor. Öncelik
+   sırası ve gerekçe lib/ortam.ts'te. */
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const TABAN = siteTabani();
