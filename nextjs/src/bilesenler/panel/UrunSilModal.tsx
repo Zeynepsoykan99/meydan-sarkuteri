@@ -34,24 +34,49 @@ export default function UrunSilModal({
 
   const gecmisAdet = urun.fiyatGecmisiSayisi ?? 0;
 
+  /* KİLİT HER YOLDA AÇILIYOR — finally şart.
+
+     ÖNCEKİ HÂLİ VE HATASI: setIslemde(false) yalnızca `if (!basarili)`
+     dalındaydı. Başarılı silmede o dala hiç girilmiyor, yani bayrak
+     `true` kalıyordu. Bileşen de sökülmüyordu (PanelArayuzu onu koşulsuz
+     ve key'siz monte ediyordu), bu yüzden bayat `true` İKİNCİ silmeye
+     taşınıyordu: modal açılır açılmaz "Siliniyor..." yazıyor, onay
+     düğmesi devre dışı geliyor ve hiç istek gönderilmiyordu.
+     Ölçüldü (26 Ağustos 2026, canlı): 1. silme DELETE→200, 2. silmede
+     ağa TEK bir istek bile çıkmadı; ekran kalıcı kilitli kaldı.
+
+     finally, `basarili`'nin değerinden ve `onOnay`'ın fırlatıp
+     fırlatmadığından bağımsız olarak bayrağı sıfırlıyor. Başarı yolunda
+     modal zaten kapanmış oluyor (urun null'a düşüyor), o yüzden gözle
+     görülür bir titreşim üretmiyor. */
   async function handleSil() {
     if (!urun) return;
     setIslemde(true);
     setHata(null);
 
-    const basarili = await onOnay(urun);
-    if (!basarili) {
+    try {
+      const basarili = await onOnay(urun);
+      if (!basarili) setHata("Ürün silinemedi. Lütfen tekrar deneyin.");
+    } catch {
+      /* onOnay kendi hatalarını yutuyor ama sözleşmesi buna söz vermiyor.
+         Fırlatırsa da kilit açılmalı — kullanıcı ekranda mahsur kalmasın. */
+      setHata("Beklenmedik bir hata oldu. Ürün silinemedi.");
+    } finally {
       setIslemde(false);
-      setHata("Ürün silinemedi. Lütfen tekrar deneyin.");
     }
   }
 
   return (
     <dialog
       ref={dialogRef}
+      /* ESC HER ZAMAN KAPATIYOR — `islemde` koşulu bilerek kaldırıldı.
+         Bir onay kutusunun kapanamaz hâle gelmesi kabul edilebilir bir
+         durum değil: istek uzarsa ya da hiç sonuçlanmazsa kullanıcının
+         tek çıkışı sayfayı yenilemek oluyordu (ölçüldü). Kapatmak zaten
+         uçan isteği iptal etmiyor; sonucu üst bileşen bildiriyor. */
       onCancel={(e) => {
         e.preventDefault();
-        if (!islemde) onKapat();
+        onKapat();
       }}
       className="m-auto w-full max-w-[460px] rounded-buyuk border-[1.5px] border-cizgi
                  bg-beyaz p-0 text-murekkep shadow-2xl backdrop:bg-murekkep/40"
@@ -61,7 +86,7 @@ export default function UrunSilModal({
           <div className="grid size-11 shrink-0 place-items-center rounded-full bg-kirmizi-sis text-xl text-kirmizi">
             🗑️
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="font-display text-lg font-bold text-murekkep">
               Ürünü Silmek İstiyor musunuz?
             </h2>
@@ -69,6 +94,18 @@ export default function UrunSilModal({
               Kimlik: <code className="font-mono font-bold">{urun.id}</code>
             </p>
           </div>
+          {/* ÜÇÜNCÜ ÇIKIŞ YOLU. Bu modalda kapatma düğmesi hiç yoktu;
+              UrunEkleModal'da vardı. Vazgeç ve Esc'in yanına bunu da
+              koyuyoruz — çıkışın tek bir düğmeye bağlı kalmaması için. */}
+          <button
+            type="button"
+            onClick={onKapat}
+            aria-label="Kapat"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-cizgi
+                       text-murekkep-soluk hover:border-murekkep hover:text-murekkep"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Ürün Önizleme Kartı */}
@@ -123,10 +160,13 @@ export default function UrunSilModal({
         )}
 
         <div className="mt-6 flex items-center justify-end gap-2.5">
+          {/* VAZGEÇ HİÇ DEVRE DIŞI KALMIYOR — `disabled={islemde}` kaldırıldı.
+              Devre dışı olan tek şey YIKICI eylem; çift gönderimi o
+              engelliyor. Kapanma yolunu da kilitlemek, isteğin uzadığı
+              her durumda kullanıcıyı ekranda mahsur bırakıyordu. */}
           <button
             type="button"
             onClick={onKapat}
-            disabled={islemde}
             className="dugme dugme-hat min-h-11 px-4 text-[14px]"
           >
             Vazgeç

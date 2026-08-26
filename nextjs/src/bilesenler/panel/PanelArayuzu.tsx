@@ -613,20 +613,47 @@ export default function PanelArayuzu() {
         />
       )}
 
-      {/* Yeni Ürün Ekleme Modalı */}
-      <UrunEkleModal
-        acik={urunEkleAcik}
-        reyonlar={reyonlar}
-        onKapat={() => setUrunEkleAcik(false)}
-        onEklendi={handleUrunEklendi}
-      />
+      {/* MODALLAR KOŞULLU MONTE EDİLİYOR — her açılış TAZE bir örnek.
 
-      {/* Ürün Silme Onay Modalı */}
-      <UrunSilModal
-        urun={silinecekUrun}
-        onKapat={() => setSilinecekUrun(null)}
-        onOnay={handleUrunSil}
-      />
+          Bu ikisi önceden koşulsuz ve key'siz duruyordu: `acik`/`urun`
+          null olunca bileşen `return null` yapıyor ama SÖKÜLMÜYOR, yani
+          iç durumu bir sonraki açılışa taşınıyordu. UrunSilModal'daki
+          "ikinci silme kilitli açılıyor" hatası tam olarak buydu.
+
+          Bileşen içindeki finally (bkz. UrunSilModal.handleSil ve
+          UrunEkleModal.handleSubmit) tek tek bayrakları garantiliyor;
+          buradaki koşullu montaj ise SINIFI kapatıyor. İkisi birden
+          gerekiyor çünkü ayrı şeylere söz veriyorlar:
+
+            finally  → bugünkü bayrak her yolda sıfırlanır
+            montaj   → YARIN eklenecek durum da sızamaz
+
+          UrunEkleModal'ın formuSifirla'sı 12 durumdan 4'ünü (reyon,
+          indirimli, stokta, gorselHata) zaten sıfırlamıyordu; koşullu
+          montaj o boşluğu da tek hamlede kapatıyor.
+
+          Kıyas: UrunDuzenleModal bunu baştan doğru yapıyordu
+          (koşullu + key={urun.id}); bu iki modal ondan geri kalmıştı. */}
+      {urunEkleAcik && (
+        <UrunEkleModal
+          acik
+          reyonlar={reyonlar}
+          onKapat={() => setUrunEkleAcik(false)}
+          onEklendi={handleUrunEklendi}
+        />
+      )}
+
+      {/* key: aynı oturumda farklı ürünlerin onay kutusu arasında
+          geçilirse (bugün UI'da mümkün değil, yarın olabilir) örnek
+          yine tazelensin. */}
+      {silinecekUrun && (
+        <UrunSilModal
+          key={silinecekUrun.id}
+          urun={silinecekUrun}
+          onKapat={() => setSilinecekUrun(null)}
+          onOnay={handleUrunSil}
+        />
+      )}
 
       {/* Başarı Bildirimi (Toast) */}
       {basariBildirim && (
