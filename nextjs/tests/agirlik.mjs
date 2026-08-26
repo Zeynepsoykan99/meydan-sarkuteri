@@ -22,7 +22,14 @@
 
 import { chromium } from "playwright-core";
 
-const B = process.env.ADRES || "http://localhost:3000";
+/* 3001 — 3000 DEĞİL. Sınamalar README'deki üretim derlemesine bakıyor
+   (`npm run build && npm start -- -p 3001`); 3000 `next dev`'in portu.
+   Bu dosya 3000'de kalırsa iki şey oluyor, ikincisi daha kötü:
+   dev sunucusu kapalıyken ECONNREFUSED ile çöküyor, AÇIKKEN sessizce
+   yanlış derlemeyi ölçüyor — dev'de PPR ön-render'ı ve üretim paketi yok,
+   yani "geçti" demesi hiçbir şey kanıtlamıyor. Diğer beş sınama dosyası
+   zaten 3001'de. */
+const B = process.env.ADRES || "http://localhost:3001";
 const CHROME = process.env.CHROME_YOLU || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const ESIK_KB = process.env.ESIK_KB ? Number(process.env.ESIK_KB) : null;
 const ESIK_ISTEK = process.env.ESIK_ISTEK ? Number(process.env.ESIK_ISTEK) : null;
