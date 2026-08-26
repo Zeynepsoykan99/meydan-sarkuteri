@@ -23,8 +23,17 @@ const nextConfig: NextConfig = {
      Yetkili anahtarı yazınca çelişki yapısal olarak ortadan kalkıyor:
      tek anahtar kaldığı için karşılaştırılacak ikinci değer yok.
      Lockfile tahmini de devre dışı kalmaya devam ediyor, çünkü rootDir
-     yine doluyor. */
-  outputFileTracingRoot: fileURLToPath(new URL(".", import.meta.url)),
+     yine doluyor.
+
+     DEĞER NEDEN ".." (DEPO KÖKÜ), "." (nextjs/) DEĞİL:
+     Vercel kendi modifyConfig'inde bu anahtarı depo köküne
+     (/vercel/path0) yazıyor — Root Directory `nextjs` olsa bile. Biz
+     nextjs dizinini yazarsak yerelde ve Vercel'de İKİ FARKLI kök
+     kullanılır; izleme yerelde dar, üretimde geniş olur ve fark ancak
+     bir dosya paketten düştüğünde anlaşılır. Depo kökünü yazınca iki
+     ortam aynı kökte buluşuyor. İki lockfile'lı depoda tahmin yine
+     devrede değil, çünkü değer açıkça verilmiş. */
+  outputFileTracingRoot: fileURLToPath(new URL("..", import.meta.url)),
   /* Cache Components: Next 16'nın önbellek modeli. Elle Cache-Control
      yazmıyoruz; önbelleklenecek şeyi 'use cache' + cacheLife belirliyor.
      PPR'yi de varsayılan yapıyor: statik kabuk hemen, dinamik parça akarak. */
