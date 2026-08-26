@@ -132,9 +132,16 @@ bolum("2 — Ham HTML (JS çalıştırmadan)");
 
   const harita = await (await fetch(B + "/sitemap.xml")).text();
   const haritaUrun = new Set(harita.match(/\/urun\/u\d+/g) || []);
-  haritaUrun.size === 470
-    ? ok("site haritası 470 ürünün tamamını bildiriyor")
-    : no(`site haritasında ${haritaUrun.size} ürün`);
+  /* KATALOG BÜYÜKLÜĞÜ SABİT YAZILMIYOR — 470 bir kod sabiti değil, o günkü
+     veri. Esnaf bir ürün ekleyince sabit yazan iddia, regresyon olmadığı
+     hâlde kırmızıya döner. Asıl güvence "harita katalogla AYNI şeyi
+     bildiriyor mu", mutlak sayı değil. (Sayfa BOYUTU koddan geliyor —
+     yukarıdaki SAYFA_BOYUTU; ikisi bilerek farklı kaynaktan.) */
+  const saglikYanit = await (await fetch(B + "/api/saglik")).json();
+  const urunSayisi = saglikYanit?.veritabani?.urunSayisi ?? null;
+  urunSayisi !== null && haritaUrun.size === urunSayisi
+    ? ok(`site haritası ${urunSayisi} ürünün tamamını bildiriyor`)
+    : no(`site haritasında ${haritaUrun.size} ürün, katalogda ${urunSayisi ?? "?"}`);
 
   const urun = await (await fetch(B + "/urun/u001")).text();
   const baslik = /<title>([^<]*)<\/title>/.exec(urun)?.[1] ?? "";

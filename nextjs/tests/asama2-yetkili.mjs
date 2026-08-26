@@ -123,6 +123,14 @@ try {
   bolum("0 — Hazırlık: kopya, geçici hesap");
 
   kopya = await urunleriOku();
+  /* BU 470 BİLEREK SABİT — türetilmiyor.
+     Diğer sınamalarda katalog büyüklüğü /api/saglik'ten okunuyor (veri,
+     kod sabiti değil). Burada olmaz: bu satır, CANLI veritabanına yazmadan
+     önceki emniyet mandalı. Beklenen sayıyı koruyacağı kaynağın kendisinden
+     türetirsek mandal boşa döner — her zaman kendisiyle uyuşur ve hiçbir
+     şeyi yakalamaz. Bağımsız bir çapa olması gerekiyor.
+     Katalog gerçekten büyürse bu satır durur; DOĞRU davranış budur —
+     "veritabanı beklediğim şey değil, yazma" demek. Sayıyı elle güncelle. */
   kopya.length === 470
     ? ok(`urunler kopyası alındı (${kopya.length} ürün, ${ALANLAR.length} alan)`)
     : no(`kopya ${kopya.length} ürün içeriyor, 470 bekleniyordu — SINAMA DURUYOR`);

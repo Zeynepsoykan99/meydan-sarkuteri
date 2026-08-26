@@ -12,7 +12,9 @@
    ===================================================================== */
 
 import { chromium } from "playwright-core";
-import { SAYFA_BOYUTU, OTOMATIK_SINIR } from "../src/lib/sayfalama.ts";
+import {
+  SAYFA_BOYUTU, OTOMATIK_SINIR, toplamSayfa, sayfaAraligi, sayfaAdresi,
+} from "../src/lib/sayfalama.ts";
 
 /* 3001 — 3000 DEĞİL. Sınamalar README'deki üretim derlemesine bakıyor
    (`npm run build && npm start -- -p 3001`); 3000 `next dev`'in portu.
@@ -29,16 +31,32 @@ const ok = (m) => { console.log(`  ✓ ${m}`); g++; };
 const no = (m) => { console.log(`  ✗ ${m}`); k++; };
 const bolum = (t) => console.log(`\n${"═".repeat(62)}\n${t}\n${"═".repeat(62)}`);
 
+/* KATALOG BÜYÜKLÜĞÜ BİR KEZ, ÇALIŞMA ZAMANINDA OKUNUYOR — gerekçesi
+   aşağıdaki "SON SAYFA" notunda. AYRIM: sayfa BOYUTU koddan
+   (lib/sayfalama), katalog BÜYÜKLÜĞÜ veriden (/api/saglik). */
+const saglikYanit = await (await fetch(B + "/api/saglik")).json();
+const URUN_SAYISI = saglikYanit?.veritabani?.urunSayisi ?? null;
+if (URUN_SAYISI === null) {
+  console.error("ürün sayısı okunamadı (/api/saglik) — sınama duruyor");
+  process.exit(1);
+}
+const SON_SAYFA = toplamSayfa(URUN_SAYISI);
+console.log(`KATALOG: ${URUN_SAYISI} ürün → ${SON_SAYFA} sayfa × ${SAYFA_BOYUTU}`);
+
 /* ═══════ 1. Ham HTML — JavaScript çalıştırmadan ═══════ */
 bolum("1 — Ham HTML (sunucu render)");
 {
   const say = (h) => (h.match(/<article class="kart/g) || []).length;
 
   const ilk = await (await fetch(B + "/")).text();
-  say(ilk) === 30 ? ok(`/ → ham HTML'de 30 kart`) : no(`/ → ${say(ilk)} kart`);
+  say(ilk) === SAYFA_BOYUTU
+    ? ok(`/ → ham HTML'de ${SAYFA_BOYUTU} kart`)
+    : no(`/ → ${say(ilk)} kart, beklenen ${SAYFA_BOYUTU}`);
 
-  const iki = await (await fetch(B + "/?sayfa=2")).text();
-  say(iki) === 30 ? ok("/?sayfa=2 → ham HTML'de 30 kart") : no(`/?sayfa=2 → ${say(iki)} kart`);
+  const iki = await (await fetch(B + sayfaAdresi(2))).text();
+  say(iki) === SAYFA_BOYUTU
+    ? ok(`${sayfaAdresi(2)} → ham HTML'de ${SAYFA_BOYUTU} kart`)
+    : no(`${sayfaAdresi(2)} → ${say(iki)} kart, beklenen ${SAYFA_BOYUTU}`);
 
   /* İki sayfa AYNI ürünleri göstermemeli — dilimleme gerçekten çalışıyor mu.
      Kimlikler YALNIZCA ızgaradaki kartlardan toplanıyor: "Düşen etiketler"
@@ -53,8 +71,23 @@ bolum("1 — Ham HTML (sunucu render)");
     ? ok("1. ve 2. sayfa farklı ürünler gösteriyor (kesişim yok)")
     : no(`${ortak.length} ürün iki sayfada da var — dilimleme bozuk`);
 
-  const son = await (await fetch(B + "/?sayfa=16")).text();
-  say(son) === 20 ? ok("/?sayfa=16 (son sayfa) → 20 kart") : no(`son sayfa ${say(son)} kart`);
+  /* SON SAYFA KATALOGDAN TÜRETİLİYOR. Burada "?sayfa=16 → 20 kart"
+     yazılıydı; ikisi de 470 ürünün türevi (16 = ceil(470/30), 20 = 470 −
+     15×30). Esnaf tek bir ürün eklese ikisi de yanlışa dönerdi ve sınama
+     regresyon olmadığı hâlde kırmızı verirdi. Sayı /api/saglik'ten
+     okunuyor: katalog BÜYÜKLÜĞÜ veri, sayfa BOYUTU kod. */
+  const { baslangic } = sayfaAraligi(SON_SAYFA);
+  const beklenen = URUN_SAYISI - baslangic;
+  const son = await (await fetch(B + sayfaAdresi(SON_SAYFA))).text();
+  say(son) === beklenen
+    ? ok(`${sayfaAdresi(SON_SAYFA)} (son sayfa) → ${beklenen} kart`)
+    : no(`son sayfa ${say(son)} kart, beklenen ${beklenen}`);
+
+  /* Son sayfanın ÖTESİ 404 — boş sayfa üretilmemeli. */
+  const asiri = await fetch(B + sayfaAdresi(SON_SAYFA + 1));
+  asiri.status === 404
+    ? ok(`${sayfaAdresi(SON_SAYFA + 1)} (son sayfanın ötesi) → 404`)
+    : no(`${sayfaAdresi(SON_SAYFA + 1)} → ${asiri.status}, 404 bekleniyordu`);
 
   /* JavaScript kapalıyken tek ilerleme yolu bu bağlantı */
   ilk.includes("Daha fazla göster") && /href="\/\?sayfa=2"/.test(ilk)
@@ -70,8 +103,8 @@ bolum("1 — Ham HTML (sunucu render)");
 bolum("2 — Olmayan sayfa → 404");
 {
   for (const [yol, bekle] of [
-    ["/?sayfa=1", 200], ["/?sayfa=16", 200],
-    ["/?sayfa=17", 404], ["/?sayfa=99", 404],
+    [sayfaAdresi(1), 200], [sayfaAdresi(SON_SAYFA), 200],
+    [sayfaAdresi(SON_SAYFA + 1), 404], [`/?sayfa=${SON_SAYFA + 999}`, 404],
     ["/?sayfa=abc", 404], ["/?sayfa=0", 404], ["/?sayfa=-1", 404],
   ]) {
     const y = await fetch(B + yol);
@@ -105,8 +138,10 @@ bolum("3 — Sayfalanmış dizi etiketleri");
   uc.prev?.endsWith("?sayfa=2") ? ok("3. sayfada rel=prev → ?sayfa=2") : no(`prev: ${uc.prev}`);
   uc.next?.endsWith("?sayfa=4") ? ok("3. sayfada rel=next → ?sayfa=4") : no(`next: ${uc.next}`);
 
-  const son = await al("/?sayfa=16");
-  son.next === null ? ok("son sayfada rel=next yok") : no(`next: ${son.next}`);
+  const sonUc = await al(sayfaAdresi(SON_SAYFA));
+  sonUc.next === null
+    ? ok(`son sayfada (${sayfaAdresi(SON_SAYFA)}) rel=next yok`)
+    : no(`next: ${sonUc.next}`);
 }
 
 /* ═══════ 4-6. Tarayıcı ═══════ */
@@ -125,59 +160,70 @@ try {
     const kart = () => s.locator(".kart").count();
     const dugme = () => s.locator('a:has-text("Daha fazla göster")').count();
 
-    (await kart()) === 30 ? ok("ilk yüklemede 30 kart") : no(`${await kart()} kart`);
+    (await kart()) === SAYFA_BOYUTU
+      ? ok(`ilk yüklemede ${SAYFA_BOYUTU} kart`)
+      : no(`${await kart()} kart, beklenen ${SAYFA_BOYUTU}`);
     (await dugme()) === 0
       ? ok("hidrasyondan sonra düğme gizli (otomatik yükleme devrede)")
-      : no("düğme daha 30 üründe görünüyor");
+      : no(`düğme daha ${SAYFA_BOYUTU} üründe görünüyor`);
 
     /* Sona kaydırdıkça otomatik yükleme. Ara adımların TAM sırası
        zamanlamaya bağlı: ziyaretçi sayfanın sonuna sabitlendiğinde
        tarayıcı onu orada tutuyor ve bir gözlem penceresine iki dilim
        sığabiliyor. Bu yüzden dizilimin kendisi değil, GARANTİLER
-       sınanıyor: 30'un katlarıyla büyüsün, otomatik yükleme 150'yi
-       AŞMASIN, sonunda tam 150'de dursun. */
-    const adimlar = [30];
+       sınanıyor: SAYFA_BOYUTU'nun katlarıyla büyüsün, otomatik yükleme
+       OTOMATIK_SINIR'ı AŞMASIN, sonunda tam orada dursun. */
+    const adimlar = [SAYFA_BOYUTU];
     for (let i = 0; i < 8; i++) {
       await s.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await s.waitForTimeout(700);
       const n = await kart();
       if (n !== adimlar[adimlar.length - 1]) adimlar.push(n);
-      if (n >= 150) break;
+      if (n >= OTOMATIK_SINIR) break;
     }
 
-    adimlar.every((n) => n % 30 === 0)
-      ? ok(`otomatik yükleme 30'un katlarıyla ilerliyor (${adimlar.join(" → ")})`)
-      : no(`30'un katı olmayan adım var: ${adimlar.join(" → ")}`);
+    adimlar.every((n) => n % SAYFA_BOYUTU === 0)
+      ? ok(`otomatik yükleme ${SAYFA_BOYUTU}'un katlarıyla ilerliyor (${adimlar.join(" → ")})`)
+      : no(`${SAYFA_BOYUTU}'un katı olmayan adım var: ${adimlar.join(" → ")}`);
 
     adimlar.length > 1
       ? ok(`kaydırınca otomatik yükleniyor (${adimlar.length - 1} dilim)`)
       : no("kaydırma hiç yükleme tetiklemedi");
 
-    adimlar.every((n) => n <= 150)
-      ? ok("otomatik yükleme 150'yi aşmadı")
+    adimlar.every((n) => n <= OTOMATIK_SINIR)
+      ? ok(`otomatik yükleme ${OTOMATIK_SINIR}'yi aşmadı`)
       : no(`sınır aşıldı: ${adimlar.join(" → ")}`);
 
-    (await kart()) === 150 ? ok("tam 150'de durdu") : no(`${await kart()} kartta durdu`);
+    (await kart()) === OTOMATIK_SINIR
+      ? ok(`tam ${OTOMATIK_SINIR}'de durdu`)
+      : no(`${await kart()} kartta durdu, beklenen ${OTOMATIK_SINIR}`);
 
     /* Fazladan kaydırma artık yeni kart getirmemeli */
     for (let i = 0; i < 3; i++) {
       await s.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await s.waitForTimeout(800);
     }
-    (await kart()) === 150
-      ? ok("150'den sonra otomatik yükleme durdu (sonsuz kaydırma yok)")
+    (await kart()) === OTOMATIK_SINIR
+      ? ok(`${OTOMATIK_SINIR}'den sonra otomatik yükleme durdu (sonsuz kaydırma yok)`)
       : no(`${await kart()} kart — otomatik yükleme durmamış`);
 
-    (await dugme()) === 1 ? ok("150'de düğme belirdi") : no("düğme yok");
+    (await dugme()) === 1 ? ok(`${OTOMATIK_SINIR}'de düğme belirdi`) : no("düğme yok");
 
+    /* Düğmenin adresi: gösterilen son dilimden SONRAKİ sayfa.
+       "/?sayfa=6" yazılıydı — 150/30 + 1'in elle hesaplanmış hâli. */
+    const sonrakiSayfa = OTOMATIK_SINIR / SAYFA_BOYUTU + 1;
+    const beklenenHref = sayfaAdresi(sonrakiSayfa);
     const href = await s.locator('a:has-text("Daha fazla göster")').getAttribute("href");
-    href === "/?sayfa=6"
+    href === beklenenHref
       ? ok(`düğme gerçek bir bağlantı, adresi doğru (${href})`)
-      : no(`düğme href="${href}", "/?sayfa=6" bekleniyordu`);
+      : no(`düğme href="${href}", "${beklenenHref}" bekleniyordu`);
 
     await s.locator('a:has-text("Daha fazla göster")').click();
     await s.waitForTimeout(1200);
-    (await kart()) === 180 ? ok("düğmeye basınca 180 kart") : no(`${await kart()} kart`);
+    const dugmeSonrasi = OTOMATIK_SINIR + SAYFA_BOYUTU;
+    (await kart()) === dugmeSonrasi
+      ? ok(`düğmeye basınca ${dugmeSonrasi} kart`)
+      : no(`${await kart()} kart, beklenen ${dugmeSonrasi}`);
 
     hata.length === 0 ? ok("JS hatası yok") : no(`${hata.length}: ${hata[0]}`);
     await c.close();
@@ -206,9 +252,9 @@ try {
     /* Aramayı temizle → sayfalama geri gelmeli, başa dönmeli */
     await s.fill('input[type="search"], .arama input', "");
     await s.waitForTimeout(900);
-    (await s.locator(".kart").count()) === 30
-      ? ok("arama temizlenince sayfalama başa döndü (30 kart)")
-      : no(`${await s.locator(".kart").count()} kart`);
+    (await s.locator(".kart").count()) === SAYFA_BOYUTU
+      ? ok(`arama temizlenince sayfalama başa döndü (${SAYFA_BOYUTU} kart)`)
+      : no(`${await s.locator(".kart").count()} kart, beklenen ${SAYFA_BOYUTU}`);
 
     /* Reyon süzgeci: o reyonun TÜM ürünleri */
     await s.locator(".reyon").nth(1).click();
@@ -245,7 +291,9 @@ try {
     });
 
     !r.tasma ? ok(`${en}px: yatay taşma yok`) : no(`${en}px: TAŞMA ${r.w}/${r.cw}`);
-    r.kart === 30 ? ok(`${en}px: 30 kart`) : no(`${en}px: ${r.kart} kart`);
+    r.kart === SAYFA_BOYUTU
+      ? ok(`${en}px: ${SAYFA_BOYUTU} kart`)
+      : no(`${en}px: ${r.kart} kart, beklenen ${SAYFA_BOYUTU}`);
     r.kucuk.length === 0
       ? ok(`${en}px: dokunma hedefleri ≥44px`)
       : no(`${en}px küçük: ${r.kucuk.join(" | ")}`);

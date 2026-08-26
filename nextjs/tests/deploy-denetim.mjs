@@ -8,11 +8,18 @@
    görünmüyor.
 
    Kullanım:
-     ADRES=https://<preview-url> node tests/deploy-denetim.mjs
+     ADRES=https://<url> ROL=canli node tests/deploy-denetim.mjs
+
+   Sayfa boyutu gibi ÜRÜN KURALLARI koddan import ediliyor (lib/sayfalama),
+   katalog BÜYÜKLÜĞÜ ise çalışma zamanında /api/saglik'ten okunuyor. İkisi
+   de bilerek: biri kod sabiti, öbürü veri. Sabit yazılan her ikinci kopya
+   er geç bayatlıyor — bu dosyada tam olarak öyle oldu (bkz. 2. bölüm).
 
    Deployment Protection açıksa bypass gerekir:
      ADRES=https://<url> BYPASS=<vercel-protection-bypass> node tests/deploy-denetim.mjs
    ===================================================================== */
+
+import { SAYFA_BOYUTU, toplamSayfa } from "../src/lib/sayfalama.ts";
 
 const B = (process.env.ADRES || "").replace(/\/$/, "");
 const BYPASS = process.env.BYPASS || "";
@@ -61,19 +68,107 @@ bolum("1 — İç dosyalar yayında mı (.vercelignore doğru yerde mi)");
   }
 }
 
-/* ═══════ 2. Sunucu render: ham HTML'de 470 ürün ═══════ */
+/* ═══════ 2. Sunucu render: ham HTML'de bir sayfa dilimi ═══════ */
 bolum("2 — Ham HTML (JavaScript çalıştırmadan)");
+
+/** Bir HTML gövdesindeki ızgara kartlarının sayısı. */
+const kartSay = (h) => (h.match(/<article class="kart/g) || []).length;
+/** YALNIZCA ızgara kartlarından toplanan ürün adresleri. "Düşen etiketler"
+ *  şeridi ve "günün etiketi" statik kabuğun parçası — her sayfada aynılar,
+ *  dilimlemeyle ilgileri yok. tests/sayfalama.mjs de böyle ayırıyor. */
+const kartAdresleri = (h) => [...new Set(
+  (h.match(/<article class="kart[\s\S]*?<\/article>/g) || [])
+    .flatMap((k) => k.match(/\/urun\/u\d+/g) || []))];
+
+/** Katalogdaki ürün sayısı — 4. bölümde /api/saglik'ten okunuyor. */
+let urunSayisi = null;
+let ilkSayfaHtml = "";
 {
   const y = await iste("/");
   y.status === 200 ? ok("/ → 200") : no(`/ → ${y.status}`);
 
   const ham = await y.text();
-  const kart = (ham.match(/<article class="kart/g) || []).length;
+  ilkSayfaHtml = ham;
+  const kart = kartSay(ham);
   const yol = new Set(ham.match(/\/urun\/u\d+/g) || []);
 
-  kart === 470 ? ok(`ham HTML'de ${kart} ürün kartı`) : no(`${kart} kart, 470 bekleniyordu`);
-  yol.size === 470 ? ok(`${yol.size} benzersiz ürün adresi`) : no(`${yol.size} adres`);
+  /* BU İKİ İDDİA BİR ZAMANLAR 470'İ SABİT YAZIYORDU ve sayfalama gelince
+     (PR #2) bayatladı — betik aylarca kırık koştu. Artık sayfa boyutu
+     lib/sayfalama'dan geliyor, yani kural TEK yerde yazılı. */
+  kart === SAYFA_BOYUTU
+    ? ok(`ham HTML'de ${kart} ürün kartı (1. sayfa dilimi)`)
+    : no(`${kart} kart, beklenen ${SAYFA_BOYUTU}`);
+
+  /* Kartların hepsi AYRI bir ürüne gitmeli — dilim içinde yineleme yok. */
+  const kartYol = kartAdresleri(ham);
+  kartYol.length === SAYFA_BOYUTU
+    ? ok(`${kartYol.length} kartın her biri ayrı ürüne gidiyor`)
+    : no(`${kartYol.length} benzersiz kart adresi, beklenen ${SAYFA_BOYUTU}`);
+
+  /* SAYFADAKİ TOPLAM adres için neden ARALIK, neden tam sayı değil:
+     ızgaranın üstünde "Düşen etiketler" şeridi var (page.tsx, en çok 12
+     ürün) ve içeriği VERİYE bağlı — indirimli ürün sayısı azalırsa şerit
+     kısalıyor, indirimli bir ürün ilk dilime de düşerse adresler
+     örtüşüyor. Tam sayı yazmak, bir fiyat değişince kırılan sahte bir
+     kesinlik olurdu. Üst sınır 20: şeridin 12'lik tavanına pay bırakıyor.
+     tests/dukkan.mjs aynı kararı veriyor — ikisi bilerek aynı. */
+  yol.size >= SAYFA_BOYUTU && yol.size <= SAYFA_BOYUTU + 20
+    ? ok(`${yol.size} benzersiz ürün adresi (dilim + düşen etiketler şeridi)`)
+    : no(`${yol.size} adres, beklenen ${SAYFA_BOYUTU}-${SAYFA_BOYUTU + 20}`);
+
   console.log(`     (ham HTML ${Math.round(ham.length / 1024)} KB)`);
+}
+
+/* ═══════ 2b. Sayfalama: dilimleme ve geçersiz ?sayfa ═══════ */
+bolum("2b — Sayfalama (?sayfa)");
+{
+  /* Sayfalama YEREL sınamalarda (tests/sayfalama.mjs) zaten var, ama orası
+     localhost'u ölçüyor. Burada gerçek ortamda da tuttuğunu görüyoruz:
+     geçersiz ?sayfa'nın 404 vermesi proxy.ts'e bağlı ve proxy Vercel'de
+     ayrı bir çalışma ortamında koşuyor (3. bölümdeki gerekçenin aynısı). */
+  const iki = await iste("/?sayfa=2");
+  iki.status === 200 ? ok("/?sayfa=2 → 200") : no(`/?sayfa=2 → ${iki.status}`);
+  const ikiHtml = await iki.text();
+
+  kartSay(ikiHtml) === SAYFA_BOYUTU
+    ? ok(`/?sayfa=2 → ${SAYFA_BOYUTU} kart`)
+    : no(`/?sayfa=2 → ${kartSay(ikiHtml)} kart, beklenen ${SAYFA_BOYUTU}`);
+
+  const birinci = kartAdresleri(ilkSayfaHtml);
+  const ikinci = kartAdresleri(ikiHtml);
+  const ortak = birinci.filter((x) => ikinci.includes(x));
+  ortak.length === 0
+    ? ok("1. ve 2. sayfa farklı ürünler gösteriyor (kesişim yok)")
+    : no(`${ortak.length} ürün iki sayfada da var — dilimleme bozuk`);
+
+  /* JavaScript kapalıyken tek ilerleme yolu bu bağlantı. */
+  /href="\/\?sayfa=2"/.test(ilkSayfaHtml)
+    ? ok('1. sayfada gerçek "?sayfa=2" bağlantısı var (JS kapalı yol)')
+    : no("1. sayfada ?sayfa=2 bağlantısı yok — JS kapalıyken ilerlenemez");
+
+  /* sayfaCoz sözleşmesi: geçersiz, sıfır, negatif ve sayı olmayan → 404.
+     Var olmayan yüksek sayfa da 404 (yinelenen boş sayfa üretilmemeli). */
+  for (const q of ["99999", "0", "-1", "abc", "1.5", "2e1"]) {
+    const y2 = await iste(`/?sayfa=${q}`);
+    if (y2.status === 404) ok(`/?sayfa=${q} → 404`);
+    else if (y2.status === 500) no(`/?sayfa=${q} → 500 — proxy Vercel'de ÇALIŞMIYOR`);
+    else no(`/?sayfa=${q} → ${y2.status}, 404 bekleniyordu`);
+  }
+
+  /* "?sayfa=1" GEÇERLİ ama kanonik adres parametresiz "/" — sayfaCoz'un
+     ve sayfaAdresi'nin sözleşmesi bu; yinelenen içeriği canonical kapatıyor. */
+  const bir = await iste("/?sayfa=1");
+  bir.status === 200 ? ok("/?sayfa=1 → 200 (geçerli)") : no(`/?sayfa=1 → ${bir.status}`);
+  const birHtml = await bir.text();
+  const kanonik = /<link rel="canonical" href="([^"]*)"/.exec(birHtml)?.[1] ?? "";
+  /* Sözleşme "?sayfa DÜŞÜRÜLÜYOR mu", sondaki eğik çizgi değil: Next
+     kanonik adresi tabanla birlikte üretiyor ve "https://…app" da
+     "https://…app/" da kök yolu gösteriyor. Eğik çizgiye takılan bir
+     iddia doğru davranışı yanlış bildirirdi — ölçüldü, tam öyle oldu. */
+  const kanonikYol = kanonik ? new URL(kanonik).pathname : "";
+  kanonik && !kanonik.includes("?") && (kanonikYol === "/" || kanonikYol === "")
+    ? ok(`/?sayfa=1 canonical parametresiz köke bakıyor (${kanonik})`)
+    : no(`/?sayfa=1 canonical "${kanonik}" — parametresiz kök adres beklenirdi`);
 }
 
 /* ═══════ 3. Ürün adresleri: proxy.ts Vercel'de çalışıyor mu ═══════ */
@@ -101,7 +196,13 @@ bolum("4 — API uçları");
   s.status === 200 ? ok("/api/saglik → 200") : no(`/api/saglik → ${s.status}`);
   if (s.status === 200) {
     const v = await s.json();
-    console.log(`     ürün: ${v?.veritabani?.urunSayisi ?? "?"}, anlık yedek: ${v?.anlikYedek?.urunSayisi ?? "?"}`);
+    /* Katalog büyüklüğü SABİT YAZILMIYOR. 470 bir kod sabiti değil, o günkü
+       veri; esnaf bir ürün ekleyince sabit yazan her iddia kırmızıya döner
+       ve kimse regresyon olmadığını anlamak için zaman harcar. Sayıyı
+       buradan alıp 5. bölümde site haritasıyla karşılaştırıyoruz — asıl
+       güvence "harita katalogla AYNI şeyi bildiriyor mu", mutlak sayı değil. */
+    urunSayisi = v?.veritabani?.urunSayisi ?? null;
+    console.log(`     ürün: ${urunSayisi ?? "?"}, anlık yedek: ${v?.anlikYedek?.urunSayisi ?? "?"}`);
   }
 
   for (const yol of ["/api/yonetici/durum", "/api/yonetici/urunler"]) {
@@ -153,7 +254,20 @@ bolum("5 — robots.txt ve sitemap.xml");
   s.status === 200 ? ok("/sitemap.xml → 200") : no(`/sitemap.xml → ${s.status}`);
   const sm = await s.text();
   const url = (sm.match(/<url>/g) || []).length;
-  url === 471 ? ok(`sitemap'te ${url} adres (1 ana + 470 ürün)`) : no(`${url} adres, 471 bekleniyordu`);
+  /* Beklenen: 1 ana sayfa + katalogdaki her ürün. Sayı 4. bölümde
+     ölçüldü, burada sabit yazılmıyor. Site haritası SAYFALANMIYOR —
+     ana sayfa 30'ar dilim çizse de harita 470 ürünün tamamını bildirmek
+     zorunda; "her ürün erişilebilir" güvencesi buradan geliyor. */
+  if (urunSayisi === null) {
+    uy("ürün sayısı okunamadı (/api/saglik), site haritası sayısı denetlenemiyor");
+  } else {
+    url === urunSayisi + 1
+      ? ok(`sitemap'te ${url} adres (1 ana + ${urunSayisi} ürün)`)
+      : no(`${url} adres, beklenen ${urunSayisi + 1} (1 ana + ${urunSayisi} ürün)`);
+
+    /* Sayfa sayısı da tutarlı mı — dilimleme ile katalog aynı şeyi söylüyor mu. */
+    console.log(`     (katalog ${urunSayisi} ürün → ${toplamSayfa(urunSayisi)} sayfa × ${SAYFA_BOYUTU})`);
+  }
   /panel|giris|afis/.test(sm)
     ? no("sitemap'te /panel, /giris ya da /afis var — robots ile çelişiyor")
     : ok("sitemap'te panel/giris/afis yok");
