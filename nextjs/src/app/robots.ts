@@ -6,10 +6,12 @@ import { siteRolu, siteTabani } from "@/lib/ortam";
    İKİ AYRI DAVRANIŞ:
    - canlı  : bugünkü kurallar. Katalog indekslenir, panel/giriş/afiş ve
               API uçları kapalı.
-   - preview: HER ŞEY kapalı ve sitemap HİÇ verilmiyor. Preview projesinin
-              üretim takma adı Hobby planında korunmuyor (ölçüldü), yani
-              kataloğun ikinci bir kopyası internete açık. Arama motoruna
-              bildirilmezse yinelenen içerik sorunu doğmaz.
+   - preview: HER ŞEY kapalı ve sitemap HİÇ verilmiyor. Canlı olmayan her
+              kopya (dal preview'ı, ileride açılacak bir hazırlık projesi)
+              arama motoruna bildirilmezse yinelenen içerik sorunu doğmaz.
+              Bu ayrım bir zamanlar var olan ikinci proje için yazılmıştı;
+              o proje silindi (26 Ağustos 2026) ama ayrım fail-safe olarak
+              duruyor — gerekçesi lib/ortam.ts'te.
 
    Rol tanımsızsa "preview" sayılıyor — gerekçesi lib/ortam.ts'te. */
 export default function robots(): MetadataRoute.Robots {

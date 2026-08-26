@@ -23,7 +23,7 @@ const ROL = process.env.ROL === "canli" ? "canli" : "preview";
 
 if (!B) {
   console.error("ADRES verilmedi. Örnek:");
-  console.error("  ADRES=https://meydan-sarkuteri-next.vercel.app node tests/deploy-denetim.mjs");
+  console.error("  ADRES=https://meydan-sarkuteri.vercel.app ROL=canli node tests/deploy-denetim.mjs");
   process.exit(1);
 }
 
@@ -131,9 +131,9 @@ bolum("5 — robots.txt ve sitemap.xml");
   const rm = await r.text();
 
   if (ROL === "preview") {
-    /* Preview projesinin üretim takma adı Hobby planında korunmuyor.
-       Kataloğun ikinci kopyası internete açık olduğu için arama motoruna
-       HİÇBİR ŞEY bildirilmemeli — yoksa canlı siteyle yinelenen içerik. */
+    /* Canlı olmayan bir ortam denetleniyor (dal preview'ı ya da ileride
+       açılacak ikinci bir proje). Böyle bir kopya arama motoruna HİÇBİR
+       ŞEY bildirmemeli — yoksa canlı siteyle yinelenen içerik doğar. */
     /Disallow:\s*\/\s*$/m.test(rm)
       ? ok('robots.txt "Disallow: /" — her şey kapalı')
       : no(`robots.txt her şeyi kapatmıyor — gelen: ${JSON.stringify(rm.trim())}`);
@@ -159,7 +159,7 @@ bolum("5 — robots.txt ve sitemap.xml");
     : ok("sitemap'te panel/giris/afis yok");
 
   /* Sitemap tabanı denetlenen adresle uyuşuyor mu? Sabit taban yüzünden
-     preview'ın sitemap'i canlı sitenin adreslerini bildiriyordu. */
+     canlı olmayan kopyalar canlı sitenin adreslerini bildiriyordu. */
   const ilkLoc = (sm.match(/<loc>([^<]*)<\/loc>/) || [])[1] ?? "";
   ilkLoc.startsWith(B)
     ? ok(`sitemap tabanı denetlenen adresle aynı (${ilkLoc})`)

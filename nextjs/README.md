@@ -212,25 +212,35 @@ uyarısı vardı; değişken ve yalnızca onun için yapılan `katalogGetir()`
 
 ## Vercel dağıtımı — ölçülmüş davranışlar
 
-Depo İKİ Vercel projesine bağlı ve **ikisinin de Root Directory'si
-`nextjs`** — yani ikisi de bu uygulamayı dağıtıyor:
+Depo **TEK** Vercel projesine bağlı:
 
-| Proje | Production Branch | Üretim takma adı | Rolü |
+| Proje | Production Branch | Root Directory | Üretim takma adı |
 | --- | --- | --- | --- |
-| `meydan-sarkuteri` | `main` | `meydan-sarkuteri.vercel.app` | **canlı** |
-| `meydan-sarkuteri-next` | `nextjs` | `meydan-sarkuteri-next.vercel.app` | ikinci kopya |
+| `meydan-sarkuteri` | `main` | `nextjs` | `meydan-sarkuteri.vercel.app` |
 
-Bu bölüm önceden `meydan-sarkuteri`'yi "depo kökündeki vanilla site"
-diye anlatıyordu; **doğru değil** — o projenin de Root Directory'si
-`nextjs`. Kökteki vanilla dosyalar (`index.html`, `panel.html`, `api/`)
-depoda duruyor ama hiçbir projeden dağıtılmıyor.
+Yani `main`'e birleşen her şey doğrudan canlıya çıkıyor. Kökteki vanilla
+dosyalar (`index.html`, `panel.html`, `api/`) depoda duruyor ama hiçbir
+yerden dağıtılmıyor — Root Directory `nextjs`.
 
-İki sonucu var:
-- `main`'e birleşen her şey **canlıya** çıkıyor; `meydan-sarkuteri-next`
-  ise `nextjs` dalında donmuş kalıyor ve `main` oraya yalnızca preview
-  olarak iniyor. İki adres farklı sürümler sunabilir.
-- İkinci kopyanın üretim takma adı korunmuyor (aşağıya bakın), bu yüzden
-  `SITE_ROLU` ile indekslemeye kapatılıyor.
+### İkinci proje neden kaldırıldı (26 Ağustos 2026)
+
+`meydan-sarkuteri-next` adında ikinci bir proje vardı; Production Branch'i
+`nextjs`, Root Directory'si yine `nextjs` idi. Üç ölçülmüş sebeple silindi:
+
+1. **Yeni üretim dağıtımı üretemiyordu.** `nextjs` dalı `main`'e birleşip
+   silinince Production Branch var olmayan bir dalı gösterir oldu; proje
+   yapısal olarak donmuştu.
+2. **Eski kataloğu herkese açık sunuyordu.** Üretim takma adı 5 gün önceki
+   `370d0d6`'yı veriyordu: ham HTML'de 470 kart (sayfalama yok),
+   `gorsel-bekliyor` yok. Bir dükkân için eski fiyatların açıkta durması
+   yinelenen içerikten daha ağır bir sorun.
+3. **Hobby planında kapatılamıyordu.** Aşağıdaki koruma ölçümüne bakın:
+   bu planda bir üretim takma adı korunamıyor, yani ikinci proje zorunlu
+   olarak ikinci bir açık kopya demekti.
+
+Yerine geçen: `meydan-sarkuteri`'nin dal başına preview adresleri — onlar
+dağıtım URL'si oldukları için **SSO ile korunuyor**, ikinci projenin
+sağlayamadığı özellik tam da buydu.
 
 ### DATABASE_URL "Sensitive" işaretliyken dağıtıma ULAŞMIYOR
 
@@ -277,12 +287,15 @@ görüntüden okunuyor), bu yüzden DB durumu derleme süresini etkilemiyor.
 ### Koruma kapsamı — üretim takma adı AÇIK
 
 Hobby planında "All Deployments" koruması yok; Standard Protection
-geçerli. Ölçüm:
+geçerli. Ölçüm (21-26 Ağustos 2026, o sırada var olan iki proje üzerinde):
 
-    https://meydan-sarkuteri-next.vercel.app/        → 200  (korumasız)
-    https://meydan-sarkuteri-next-<hash>-....app/    → 302  (Vercel SSO)
+    https://<proje>.vercel.app/                → 200  (korumasız)
+    https://<proje>-<hash>-<takim>.vercel.app/ → 302  (Vercel SSO)
 
 Yani dağıtım URL'leri korunuyor, **üretim takma adı korunmuyor**. Katalog
-o adreste herkese açık. Denetim betiği bu yüzden bypass ile çalıştırılıyor:
+canlı adreste zaten herkese açık olduğu için bu canlı proje adına bir sorun
+değil; sorun ikinci bir projenin ikinci bir açık kopya üretmesiydi —
+kaldırılma gerekçelerinden biri bu. Denetim betiği dağıtım URL'lerine
+baktığı için bypass ile çalıştırılıyor:
 
     ADRES=https://... BYPASS=<secret> node tests/deploy-denetim.mjs
