@@ -187,11 +187,19 @@ node --env-file-if-exists=.env.local scripts/deneme-yedegi.js al     # kopya al
 node --env-file-if-exists=.env.local scripts/deneme-yedegi.js geri   # tabana dön
 ```
 
-Toplam: **249 sınama**, %100 geçiyor (25 Ağustos 2026, altısı da ölçülerek
-koşuldu). Dağılım: dukkan 50, sayfalama 55, asama2 42, asama2-yetkili 46,
+Toplam: **250 sınama**, %100 geçiyor (26 Ağustos 2026, altısı da ölçülerek
+koşuldu). Dağılım: dukkan 50, sayfalama 56, asama2 42, asama2-yetkili 46,
 asama3 35, saglik 21. Bunların **144'ü Playwright gerektirmiyor**
 (asama2 + asama2-yetkili + asama3 + saglik); dukkan ve sayfalama tarayıcı
 açıyor.
+
+Ayrıca `tests/deploy-denetim.mjs` var — 250'ye dahil DEĞİL, çünkü localhost'u
+değil uzak bir dağıtımı ölçüyor ve `ADRES` istiyor. Canlıya karşı **52
+denetim**:
+
+```
+ADRES=https://meydan-sarkuteri.vercel.app ROL=canli node tests/deploy-denetim.mjs
+```
 
 Son iki dosya canlı veritabanına yazıyor. İkisi de yazdığını geri alıyor:
 `asama2-yetkili` ürünlerin kopyasını alıp sonunda satır satır doğrulayarak
