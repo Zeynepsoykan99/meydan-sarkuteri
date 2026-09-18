@@ -14,6 +14,12 @@ type Durum = {
      İkisi ayrı ağaçlarda olduğu için seçim ancak bağlamla paylaşılabiliyor. */
   reyon: string;
   reyonYaz: (v: string) => void;
+  /* Arama varken reyon başına eşleşen ürün sayısı ("hepsi" dahil); arama
+     yokken null. Şerit rozetleri bunu gösteriyor: "Fırından 22" yazıp
+     listede 2 ürün göstermek, reyonun açılmadığı izlenimini veriyordu.
+     Sayıyı katalog hesaplıyor (ürün verisi orada), şerit okuyor. */
+  aramaSayilari: Record<string, number> | null;
+  aramaSayilariYaz: (v: Record<string, number> | null) => void;
 };
 
 const Baglam = createContext<Durum | null>(null);
@@ -21,8 +27,10 @@ const Baglam = createContext<Durum | null>(null);
 export function KatalogDurumProvider({ children }: { children: React.ReactNode }) {
   const [arama, aramaYaz] = useState("");
   const [reyon, reyonYaz] = useState("hepsi");
+  const [aramaSayilari, aramaSayilariYaz] = useState<Record<string, number> | null>(null);
   const deger = useMemo(
-    () => ({ arama, aramaYaz, reyon, reyonYaz }), [arama, reyon]);
+    () => ({ arama, aramaYaz, reyon, reyonYaz, aramaSayilari, aramaSayilariYaz }),
+    [arama, reyon, aramaSayilari]);
   return <Baglam.Provider value={deger}>{children}</Baglam.Provider>;
 }
 

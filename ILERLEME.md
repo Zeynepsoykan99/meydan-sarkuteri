@@ -324,3 +324,76 @@ vitrini gezen tarayıcı sınamasıydı (dukkan, sayfalama). Panel arayüzünü
 tarayıcıda açıp React bileşen durumunu ölçen tek bir sınama yoktu.
 
 Derleme doğrulandı: 486 sayfa, 5.8 sn, hata yok.
+
+
+## L turu — arama ve reyon sonrası kaydırma, rozet kesişimi (17 Eylül 2026)
+
+**Üç kullanıcı şikâyeti, iki ayrı kök sebep.**
+
+**1 ve 3 — "sonuçlar görünmüyor".** Katalog ilk ekranın altında duruyor
+(320px'te 2126px, 375px'te 2083px, 1280px'te 1480px aşağıda) ve süzgeç
+değişince hiçbir şey kaydırmıyordu: arama yazan da reyon seçen de ekranda
+0 kart görüyordu, tek görünür değişiklik reyon düğmesinin seçili hâle
+gelmesiydi. Listenin derinindeyken reyon seçmek daha kötüydü — kısalan
+listenin dışına, altbilgiye düşülüyordu.
+
+`KatalogBolumu` artık arama ya da reyon DEĞİŞİNCE bölümü yapışkan başlığın
+altına hizalıyor. Kural "hizalı değilse hizala": ilk harfte bir kez
+kayıyor, sonraki tuşlarda hiç kıpırdamıyor. Hedef ilk kart değil bölümün
+başı — sayaç satırı sonucun neden az olduğunu orada anlatıyor. Hareket
+azaltma tercihi açıksa animasyonsuz. İlk yüklemede kaydırma yok.
+
+**2 — "reyon açılmıyor gibi".** Süzme doğruydu (iki süzgeci birleştiriyor)
+ama ekran bunu söylemiyordu: şerit rozeti "Fırından 22" derken liste 2
+ürün gösteriyordu, sayaç reyondan hiç söz etmiyordu ve "çikolata" için 14
+reyonun 12'si sonuçsuzdu. Üstüne, boş durumdaki "Filtreleri sıfırla"
+aramayı TEMİZLEMİYORDU: basan ziyaretçi 471 değil yine 38 sonuç görüyordu.
+
+Karar (S3): birleştirme sürüyor, durum görünür oldu. Sayaç artık
+"Fırından reyonunda "çikolata" için 2 ürün bulundu." diyor; altında
+"Bütün reyonlarda ara (38)" ve "✕ "çikolata" aramasını kaldır" düğmeleri
+var; boş durum sebebini söylüyor ve aynı çıkışı sunuyor; "Filtreleri
+sıfırla" aramayı da temizliyor. Arama varken şerit rozetleri KESİŞİMİ
+gösteriyor (sarı zemin, sıfırsa zeminsiz), arama yokken toplamı. Sayıyı
+katalog hesaplayıp bağlamla şeride veriyor; useLayoutEffect ile, rozetin
+listeden farklı sayı gösterdiği tek bir kare bile çizilmiyor.
+
+**Yol boyunca bulunan, şikâyet edilmemiş üç hata.**
+
+1. **Yapışkan başlık payı yanlış yerdeydi.** `html { scroll-padding-top:
+   144px }` başlığın KENDİ içindeki öğeleri de "örtülmüş" sayıyordu:
+   sayfa aşağıdayken arama kutusuna yazılan her harf sayfayı 115px, Tab
+   ile her reyon çipi 361px yukarı itiyordu (ölçüldü). Pay artık öğelerde
+   `scroll-margin` olarak duruyor, yapışkan başlığın içi sıfır. İmleç
+   kaydırması `scroll-margin`'e bakmadığı için bu ayrım şart; odak yine
+   başlığın altına iniyor (geri Tab ile doğrulandı).
+2. **Çapa bağlantılarında pay iki kez uygulanıyordu.** Tarayıcı kabın
+   `scroll-padding`'i ile hedefin `scroll-margin`'ini TOPLUYOR; ikisi de
+   144px olduğu için `#firsat` 288px'e iniyordu, arada 144px'lik yabancı
+   içerik kalıyordu. Artık tek pay.
+3. **favicon.ico yoktu** — her ziyarette konsolda 404. Mevcut
+   `icon-512.png`'den 16/32/48'lik gerçek bir ICO üretildi
+   (`src/app/favicon.ico`). Sınamada hariç tutma listesi YOK: konsol
+   gerçekten temiz.
+
+**Sınama:** `nextjs/tests/vitrin-kaydirma.mjs` (YENİ, 121 denetim).
+Kaydırma hizası, yazarken titremezlik, derinden reyon seçimi, rozet
+kesişimi ve her karede rozet-liste tutarlılığı, boş durumun çıkış yolu,
+hareket azaltma, yapışkan pay, favicon ve konsol. Reyonları ada göre
+buluyor ve yeni işaretleme kancaları yoksa eskisine düşüyor — DÜZELTME
+ÖNCESİ kodda da koşabilsin diye. Ölçüldü: düzeltme geri alınınca 84
+denetim kırmızı, geri konunca 121 yeşil. Gerileme: sayfalama 56, dukkan
+50, asama2 42, saglik 21 — hepsi geçiyor.
+
+### Açık: süzgeç kalkınca otomatik yükleme takılıyor
+
+Süzgeç kaldırıldığı karede `KatalogBolumu`'ndaki iki effect çakışıyor:
+otomatik yükleme effect'i o an hâlâ ESKİ kaydırma konumundan bakıp
+nöbetçiyi menzilde görüyor, kendi "bitti" bayrağını açıp bir dilim
+istiyor; hemen ardından sıfırlama effect'i adedi 30'a geri çekiyor. Net
+durum değişmediği için bağımlılıklar da değişmiyor ve dinleyici bir daha
+kurulmuyor — bayrağı açık, ölü bir dinleyici kalıyor. Ziyaretçi dibe
+insin, `scroll`/`resize` elle gönderilsin, hiçbir şey yüklenmiyor; süzgeç
+bir kez daha değişince açılıyor (120 karta çıkıyor, ölçüldü). Kaydırma
+düzeltmesi bunu kaldırmıyor. Sınamada `⚠` ile işaretli, sonuca
+sayılmıyor. AYRI İŞ.

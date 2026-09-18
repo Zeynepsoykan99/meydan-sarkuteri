@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KartVerisi, Reyon } from "@/lib/tipler";
 import { indirimYuzde, sadelestir } from "@/lib/bicim";
 import { DILIM_ARALIGI_MS, OTOMATIK_SINIR, SAYFA_BOYUTU, sayfaAdresi } from "@/lib/sayfalama";
@@ -12,6 +12,11 @@ import { useKatalogDurumu } from "./KatalogDurumu";
    Ürün listesi sunucudan prop olarak geliyor; bu bileşen sunucuda da
    çiziliyor (client bileşenleri SSR'lanıyor), yani ilk HTML 470 kartı
    içeriyor. Etkileşim hidrasyondan sonra başlıyor. */
+
+/* Sayacın altındaki küçük eylem düğmeleri; "Sadece indirimliler" ile aynı kalıp. */
+const CIP = `inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] border-cizgi
+             bg-beyaz px-4 py-2 text-[14.5px] font-semibold text-murekkep
+             transition-colors hover:border-murekkep`;
 
 type Siralama = "onerilen" | "ucuz" | "pahali" | "birim" | "indirim" | "isim";
 
@@ -26,7 +31,7 @@ export default function KatalogBolumu({
   toplam: number;
 }) {
   /* reyon artık bağlamdan: şerit yapışkan başlıkta duruyor, burada değil. */
-  const { arama, reyon, reyonYaz } = useKatalogDurumu();
+  const { arama, aramaYaz, reyon, reyonYaz, aramaSayilariYaz } = useKatalogDurumu();
   const [siralama, setSiralama] = useState<Siralama>("onerilen");
   const [indirimli, setIndirimli] = useState(false);
   const [enAz, setEnAz] = useState("");
@@ -58,19 +63,53 @@ export default function KatalogBolumu({
     () => new Map(urunler.map((u) => [u.id, sadelestir(`${u.ad} ${reyonAdlari.get(u.reyon) ?? ""}`)])),
     [urunler, reyonAdlari]);
 
-  const liste = useMemo(() => {
-    const kelimeler = sadelestir(arama).split(/\s+/).filter(Boolean);
+  const kelimeler = useMemo(
+    () => sadelestir(arama).split(/\s+/).filter(Boolean), [arama]);
+
+  /* Reyon DIŞINDAKİ bütün süzgeçler (arama, indirim, fiyat). Reyon ayrı
+     tutuluyor çünkü "bütün reyonlarda ara (N)" düğmesi N'yi reyonsuz
+     hesaplıyor — düğmeye basınca liste tam o sayıyı göstermeli. */
+  const reyonsuzUyan = useMemo(() => {
     const az = enAz === "" ? null : Number(enAz);
     const cok = enCok === "" ? null : Number(enCok);
-
-    const suzulmus = urunler.filter((u) => {
-      if (reyon !== "hepsi" && u.reyon !== reyon) return false;
+    return urunler.filter((u) => {
       if (indirimli && !u.eskiFiyat) return false;
       if (az !== null && u.fiyat < az) return false;
       if (cok !== null && u.fiyat > cok) return false;
       const metin = dizin.get(u.id) ?? "";
       return kelimeler.every((k) => metin.includes(k));
     });
+  }, [urunler, dizin, kelimeler, indirimli, enAz, enCok]);
+
+  /* Şerit rozetleri için reyon başına YALNIZCA aramaya uyan sayı.
+     İndirim ve fiyat süzgeci burada yok: rozetin anlamı "bu reyonda bu
+     aramanın kaç sonucu var" — o iki süzgeç katalog başlığının altında,
+     şeritten uzakta duruyor ve rozeti onlara bağlamak sayının neden
+     değiştiğini görünmez kılardı. Arama yokken null: rozet toplamı
+     gösteriyor. */
+  const aramaSayilari = useMemo(() => {
+    if (kelimeler.length === 0) return null;
+    const say: Record<string, number> = { hepsi: 0 };
+    for (const u of urunler) {
+      const metin = dizin.get(u.id) ?? "";
+      if (!kelimeler.every((k) => metin.includes(k))) continue;
+      say.hepsi++;
+      say[u.reyon] = (say[u.reyon] ?? 0) + 1;
+    }
+    return say;
+  }, [urunler, dizin, kelimeler]);
+
+  /* Sayıları şeride bildir. Şerit layout'ta, ayrı ağaçta; ürün verisi
+     burada — bağlam tek köprü. useLayoutEffect: boyamadan önce çalışıyor,
+     yani liste ile rozetin farklı sayı gösterdiği bir kare hiç çizilmiyor.
+     Katalog sökülünce (ürün sayfasına geçiş) rozet toplamlara dönüyor. */
+  useLayoutEffect(() => { aramaSayilariYaz(aramaSayilari); }, [aramaSayilari, aramaSayilariYaz]);
+  useLayoutEffect(() => () => aramaSayilariYaz(null), [aramaSayilariYaz]);
+
+  const liste = useMemo(() => {
+    const suzulmus = reyon === "hepsi"
+      ? reyonsuzUyan
+      : reyonsuzUyan.filter((u) => u.reyon === reyon);
 
     const kural: Record<Siralama, (a: KartVerisi, b: KartVerisi) => number> = {
       onerilen: () => 0,
@@ -91,7 +130,7 @@ export default function KatalogBolumu({
       Number(!a.stokta) - Number(!b.stokta);
 
     return [...suzulmus].sort((a, b) => stokSonra(a, b) || kural[siralama](a, b));
-  }, [urunler, dizin, arama, reyon, indirimli, enAz, enCok, siralama]);
+  }, [reyonsuzUyan, reyon, siralama]);
 
   const bos = liste.length === 0;
 
@@ -186,22 +225,94 @@ export default function KatalogBolumu({
     if (!suzgecEtkin) setAdet(SAYFA_BOYUTU);
   }, [suzgecEtkin]);
 
+  /* ARAMA YA DA REYON DEĞİŞİNCE KATALOĞU GÖSTER.
+
+     Katalog ilk ekranın çok altında: vitrin ve düşen etiketler onu
+     375px'te 2083px, 1280px'te 1480px aşağı itiyor (ölçüldü). Süzgeç
+     değişince hiçbir şey kaydırmadığı için ziyaretçi sonucu hiç
+     görmüyordu; listenin derinindeyken reyon seçince de kısalan listenin
+     dışına, altbilgiye düşüyordu.
+
+     Hedef ilk kart değil BÖLÜMÜN BAŞI (başlık + sayaç): sayaç "Fırından
+     reyonunda 'çikolata' için 2 ürün" diyor, sonucun neden az olduğunu
+     o satır anlatıyor. Yapışkan başlığın altında durması globals.css'teki
+     scroll-margin payı ile sağlanıyor ("İçeriğe atla" da aynı yere
+     gidiyor). Hizalı mı sorusunda kabın scroll-padding'i de hesaba
+     katılıyor: tarayıcı ikisini TOPLAYARAK uyguluyor (ikisi birden
+     144px iken başlık 288px'e iniyordu — ölçüldü).
+
+     Kural "hizalı değilse hizala": ilk harfte bir kez kayıyor, sonraki
+     tuşlarda başlık zaten yerinde olduğu için hiç kıpırdamıyor. Arama
+     kutusu yapışkan başlıkta, yani kayarken odak ve kutu ekranda kalıyor.
+     Aramayı temizlemek de bir değişiklik: 471 ürünlük listenin başına.
+
+     İlk yükleme bir değişiklik DEĞİL — önceki değer bağlamdaki değerle
+     başlıyor, ilk çalıştırma hiçbir şey yapmıyor. Ürün sayfasından reyona
+     basınca /#katalog adresi kendisi götürüyor.
+
+     Olay işleyicilerinde değil burada: aramayı, reyonu ve boş durumdaki
+     düğmeleri değiştiren dört ayrı yer var; biri unutulursa sessizce
+     bozulurdu. */
+  const bolum = useRef<HTMLElement | null>(null);
+  const oncekiSuzgec = useRef({ arama, reyon });
+  useEffect(() => {
+    const o = oncekiSuzgec.current;
+    if (o.arama === arama && o.reyon === reyon) return;
+    oncekiSuzgec.current = { arama, reyon };
+
+    const el = bolum.current;
+    if (!el) return;
+    const hedef =
+      (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) +
+      (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
+    if (Math.abs(el.getBoundingClientRect().top - hedef) < 2) return;
+    const hareketsiz = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "start", behavior: hareketsiz ? "auto" : "smooth" });
+  }, [arama, reyon]);
+
+  const reyonAdi = reyon === "hepsi" ? null : reyonAdlari.get(reyon);
+  const tumReyonlardaAdet = reyonsuzUyan.length;
+  const q = arama.trim();
+
   /* "Daha fazla göster" adresi: gösterilen son dilimden SONRAKİ sayfa. */
   const sonrakiSayfa = Math.floor((dilimBasi + adet) / SAYFA_BOYUTU) + 1;
 
   return (
-    <section className="katalog scroll-mt-baslik py-11 md:py-16" id="katalog">
+    <section ref={bolum} className="katalog py-11 md:py-16" id="katalog">
       <div className="kucak">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
+          <div className="min-w-0 max-w-full">
             <h2 className="text-[clamp(26px,4vw,36px)]">
               {reyon === "hepsi" ? "Bütün reyonlar" : reyonAdlari.get(reyon)}
             </h2>
-            <p className="mt-1.5 text-murekkep-soluk" aria-live="polite" aria-atomic="true">
-              {arama.trim()
-                ? `"${arama.trim()}" için ${liste.length} ürün bulundu.`
-                : `${liste.length} ürün listeleniyor.`}
+            <p className="mt-1.5 text-murekkep-soluk [overflow-wrap:anywhere]" aria-live="polite" aria-atomic="true"
+               data-sayac="">
+              {q && reyonAdi
+                ? `${reyonAdi} reyonunda "${q}" için ${liste.length} ürün bulundu.`
+                : q
+                  ? `"${q}" için ${liste.length} ürün bulundu.`
+                  : `${liste.length} ürün listeleniyor.`}
             </p>
+
+            {/* Arama + reyon birlikte: ikisinin de açıkça görünmesi ve tek
+                dokunuşla ayrılabilmesi. "Fırından 22 ürün" beklerken 2
+                ürün gören ziyaretçi, reyonun açılmadığını sanıyordu. */}
+            {q && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {reyonAdi && (
+                  <button type="button" data-eylem="tum-reyonlarda-ara"
+                          onClick={() => reyonYaz("hepsi")} className={CIP}>
+                    Bütün reyonlarda ara
+                    <span className="text-murekkep-soluk">({tumReyonlardaAdet})</span>
+                  </button>
+                )}
+                <button type="button" data-eylem="aramayi-kaldir"
+                        onClick={() => aramaYaz("")}
+                        className={`${CIP} max-w-full text-left [overflow-wrap:anywhere]`}>
+                  <span aria-hidden="true">✕</span> &ldquo;{q}&rdquo; aramasını kaldır
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -254,16 +365,35 @@ export default function KatalogBolumu({
         {bos ? (
           <div className="rounded-buyuk border-2 border-dashed border-cizgi px-5 py-12 text-center">
             <p className="font-display text-xl font-extrabold">Tezgâhta bulamadık.</p>
-            <p className="mt-2 text-murekkep-soluk">
-              Başka bir kelime dene ya da bütün reyonlara dön.
+            <p className="mt-2 text-murekkep-soluk [overflow-wrap:anywhere]" data-bos-aciklama="">
+              {q && reyonAdi
+                ? tumReyonlardaAdet > 0
+                  ? `${reyonAdi} reyonunda "${q}" yok, ama bütün reyonlarda ${tumReyonlardaAdet} ürün var.`
+                  : `"${q}" hiçbir reyonda yok. Başka bir kelime dene.`
+                : q
+                  ? `"${q}" için sonuç yok. Başka bir kelime dene ya da süzgeçleri sıfırla.`
+                  : "Bu süzgeçlere uyan ürün yok."}
             </p>
-            <button
-              type="button"
-              onClick={() => { reyonYaz("hepsi"); setIndirimli(false); setEnAz(""); setEnCok(""); }}
-              className="dugme dugme-dolu mt-5"
-            >
-              Filtreleri sıfırla
-            </button>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              {q && reyonAdi && tumReyonlardaAdet > 0 && (
+                <button type="button" data-eylem="tum-reyonlarda-ara"
+                        onClick={() => reyonYaz("hepsi")} className="dugme dugme-dolu">
+                  Bütün reyonlarda ara ({tumReyonlardaAdet})
+                </button>
+              )}
+              {/* Aramayı da temizliyor. Önceden temizlemiyordu: "sıfırla"ya
+                  basan ziyaretçi 471 değil yine aramanın sonucunu görüyordu. */}
+              <button
+                type="button" data-eylem="sifirla"
+                onClick={() => {
+                  aramaYaz(""); reyonYaz("hepsi");
+                  setIndirimli(false); setEnAz(""); setEnCok("");
+                }}
+                className={`dugme ${q && reyonAdi && tumReyonlardaAdet > 0 ? "dugme-hat" : "dugme-dolu"}`}
+              >
+                Filtreleri sıfırla
+              </button>
+            </div>
           </div>
         ) : (
           <>

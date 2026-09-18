@@ -32,7 +32,7 @@ export default async function VitrinLayout({
       <KatalogDurumProvider>
         {/* Başlık ve reyon şeridi TEK yapışkan blok: aşağı kaydırılınca
             ikisi de ekranda kalıyor, eski sitedeki gibi. */}
-        <div className="sticky top-0 z-40 bg-beyaz shadow-[0_1px_0_rgb(233_228_218)]">
+        <div className="yapiskan-baslik sticky top-0 z-40 bg-beyaz shadow-[0_1px_0_rgb(233_228_218)]">
           <Baslik />
           <ReyonSerit reyonlar={reyonlar} sayilar={sayilar} toplam={urunler.length} />
         </div>
