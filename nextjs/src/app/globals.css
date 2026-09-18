@@ -67,8 +67,27 @@
    ===================================================================== */
 
 @layer base {
-  html {
-    scroll-padding-top: var(--spacing-baslik);
+  /* YAPIŞKAN BAŞLIK PAYI — html'de scroll-padding DEĞİL, öğelerde
+     scroll-margin.
+
+     Eskiden html { scroll-padding-top: 144px } vardı. Bu, başlığın
+     KENDİ içindeki öğeleri de "örtülmüş" sayıyordu (arama kutusu y≈29,
+     pay 144): sayfa aşağıdayken aramaya yazılan her harfte tarayıcı
+     imleci göstermek için sayfayı 115px yukarı itiyordu, Tab ile reyon
+     çipleri arasında gezerken her basışta 361px. Ayrıca bir öğe
+     scroll-mt-baslik da taşıyınca pay iki kez uygulanıyordu (#firsat
+     288px'e iniyordu). Hepsi ölçüldü.
+
+     İmleç kaydırması scroll-margin'e bakmıyor, yalnızca kabın
+     scroll-padding'ine bakıyor; o yüzden pay kaba değil öğelere verildi
+     ve yapışkan başlığın içi sıfırlandı. Odaklanan öğe yine başlığın
+     altına iniyor (geri Tab ile ölçüldü: 144px), #katalog / #firsat
+     bağlantıları da. :where → özgüllük 0, yardımcı sınıflar ezebilir. */
+  :where(body *) {
+    scroll-margin-top: var(--spacing-baslik);
+  }
+  :where(.yapiskan-baslik, .yapiskan-baslik *) {
+    scroll-margin-top: 0;
   }
   body {
     background: var(--color-beyaz);
@@ -272,6 +291,10 @@
 
   /* Reyon çipi */
   .reyon {
+    /* relative: içteki sr-only ekleri (mutlak konumlu) çipe bağlı kalsın.
+       Yoksa en yakın konumlu ata yapışkan başlık oluyor, ekler kayan
+       şeridin kırpmasından kaçıp sayfayı 2000px'e kadar yatay taşırıyordu. */
+    position: relative;
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
@@ -300,6 +323,31 @@
      saydamlık yerine punto/ağırlık taşıyor. */
   .reyon[aria-pressed="true"] .reyon-adet { color: var(--color-beyaz); }
   .reyon-adet { color: var(--color-murekkep-soluk); font-variant-numeric: tabular-nums; }
+
+  /* Arama varken rozet reyonun toplamını değil ARAMA SONUCUNU gösteriyor.
+     Aynı yerdeki iki farklı sayı karışmasın diye bu hâl kendi zemininde:
+     vitrin sarısı üstünde mürekkep. Zemin kendi olduğu için seçili
+     (kırmızı) çipte de aynı kontrastı veriyor — yukarıdaki beyaz kuralını
+     burada geçersiz kılıyoruz. Sıfır sonuç zeminsiz: "burada yok"
+     bilgisi, dikkat çekmeden. */
+  .reyon-adet-arama,
+  .reyon[aria-pressed="true"] .reyon-adet-arama {
+    min-width: 24px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--color-sari);
+    color: var(--color-murekkep);
+    font-weight: 800;
+    text-align: center;
+  }
+  .reyon-adet-arama[data-sifir] {
+    background: transparent;
+    color: var(--color-murekkep-soluk);
+    font-weight: 600;
+  }
+  .reyon[aria-pressed="true"] .reyon-adet-arama[data-sifir] {
+    color: var(--color-beyaz);
+  }
 
   /* Arama kutusu */
   .arama input {

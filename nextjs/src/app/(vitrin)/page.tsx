@@ -226,7 +226,7 @@ export default async function AnaSayfa({
    önlemek için tam dilim çiziliyor. */
 function KatalogIskeleti() {
   return (
-    <section className="katalog scroll-mt-baslik py-11 md:py-16" id="katalog" aria-busy="true">
+    <section className="katalog py-11 md:py-16" id="katalog" aria-busy="true">
       <div className="kucak">
         <div className="h-10 w-56 animate-pulse rounded-orta bg-cizgi" />
         <div className="izgara mt-6">
